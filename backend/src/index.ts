@@ -20,7 +20,7 @@ mongoose.connection.once('open', () => {
     console.log("connection to MongoDB has been established");
 
     expressApp.listen(env.SERVER_PORT, () => {
-        return console.log(`server is listening on https://${env.SERVER_NAME}::${env.SERVER_PORT}`);
+        return console.log(`server is listening on https://${env.SERVER_NAME}:${env.SERVER_PORT}`);
     })
 
 })

@@ -4,13 +4,19 @@ import passport from 'passport'
 import passportLocal from 'passport-local'
 import cookieParser from 'cookie-parser'
 import session from 'express-session'
-class expressApp 
+
+import RegisterRoute from './routes/RegisterRoute';
+
+class expressApp
 {
     private express: express.Application;
 
     constructor() {
         this.express = express()
             .use(express.json())
+            .use(express.urlencoded({
+                extended: true
+            }))
             .use(cors({
                 origin: `https://${process.env.SERVER_NAME}:${process.env.SERVER_PORT}`,
                 credentials: true
@@ -23,6 +29,14 @@ class expressApp
             .use(cookieParser())
             .use(passport.initialize())
             .use(passport.session())
+        
+        this.mountRoutes();
+    }
+
+    private mountRoutes() : void {
+        const router: express.Router = express.Router();
+        router.use([RegisterRoute]);
+        this.express.use('/', router);
     }
 
     public getExpress() : express.Application {
