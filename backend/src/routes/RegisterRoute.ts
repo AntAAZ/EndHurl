@@ -15,7 +15,7 @@ class RegisterRoute {
 
     private async handleGetReq(req: Request, res: Response, next: NextFunction)
     {
-        res.send("test")
+        res.send("registerPage")
     }
     private async handlePostReq(req: Request, res: Response, next: NextFunction)
     {
@@ -39,7 +39,7 @@ class RegisterRoute {
             })
 
             await newUser.save();
-            res.send("a little success");
+            res.send("registerSuccess");
             
         })
 

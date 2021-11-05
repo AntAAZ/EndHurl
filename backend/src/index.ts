@@ -1,8 +1,6 @@
 import mongoose from 'mongoose'
-import bcrypt from 'bcryptjs'
 import dotenv from 'dotenv'
-
-import expressApp from './expressApp';
+import expressApp from './expressApp'
 
 dotenv.config();
 const env: NodeJS.ProcessEnv = process.env;

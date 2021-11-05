@@ -1,10 +1,11 @@
 import express from 'express'
 import cors from 'cors'
 import passport from 'passport'
-import passportLocal from 'passport-local'
+import PassportAuth from './PassportAuth'
 import cookieParser from 'cookie-parser'
 import session from 'express-session'
 
+import LoginRoute from './routes/LoginRoute';
 import RegisterRoute from './routes/RegisterRoute';
 
 class expressApp
@@ -29,13 +30,14 @@ class expressApp
             .use(cookieParser())
             .use(passport.initialize())
             .use(passport.session())
+            new PassportAuth();
         
         this.mountRoutes();
     }
 
     private mountRoutes() : void {
         const router: express.Router = express.Router();
-        router.use([RegisterRoute]);
+        router.use([RegisterRoute, LoginRoute]);
         this.express.use('/', router);
     }
 
