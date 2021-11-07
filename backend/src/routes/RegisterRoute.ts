@@ -9,14 +9,9 @@ class RegisterRoute {
     private router: Router = Router();
 
     constructor() {    
-        this.router.get('/register', this.handleGetReq);
         this.router.post('/register', this.handlePostReq);
     }
 
-    private async handleGetReq(req: Request, res: Response, next: NextFunction)
-    {
-        res.send("registerPage")
-    }
     private async handlePostReq(req: Request, res: Response, next: NextFunction)
     {
 
