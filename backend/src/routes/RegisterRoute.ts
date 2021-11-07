@@ -34,7 +34,7 @@ class RegisterRoute {
             })
 
             await newUser.save();
-            res.send("registerSuccess");
+            res.send("success");
             
         })
 

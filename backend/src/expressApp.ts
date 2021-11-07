@@ -11,6 +11,7 @@ import UserRoute from './routes/UserRoute'
 import dotenv from 'dotenv'
 
 import MongoStore from 'connect-mongo';
+import LogoutRoute from './routes/LogoutRoute'
 
 class expressApp
 {
@@ -45,7 +46,7 @@ class expressApp
 
     private mountRoutes() : void {
         const router: express.Router = express.Router();
-        router.use([RegisterRoute, LoginRoute, UserRoute]);
+        router.use([RegisterRoute, LoginRoute, UserRoute, LogoutRoute]);
         this.express.use('/', router);
     }
 

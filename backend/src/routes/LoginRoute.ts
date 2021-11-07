@@ -13,7 +13,7 @@ class LoginRoute {
 
     private async handlePostReq(req: Request, res: Response, next: NextFunction)
     {
-        res.send('loginSuccess')
+        res.send('success')
     }
 
     public getRouter() : Router {
