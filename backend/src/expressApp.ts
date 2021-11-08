@@ -4,6 +4,7 @@ import passport from 'passport'
 import PassportAuth from './PassportAuth'
 import cookieParser from 'cookie-parser'
 import session from 'express-session'
+import flash from 'connect-flash'
 
 import LoginRoute from './routes/LoginRoute';
 import RegisterRoute from './routes/RegisterRoute';
@@ -39,6 +40,7 @@ class expressApp
             .use(cookieParser())
             .use(passport.initialize())
             .use(passport.session())
+            .use(flash())
             new PassportAuth();
         
         this.mountRoutes();

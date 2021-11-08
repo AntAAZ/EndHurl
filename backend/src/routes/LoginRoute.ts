@@ -8,12 +8,33 @@ class LoginRoute {
 
     constructor() 
     {    
-        this.router.post('/login', passport.authenticate("local"), this.handlePostReq);
+        this.router.post('/login', this.handlePostReq);
     }
 
     private async handlePostReq(req: Request, res: Response, next: NextFunction)
     {
-        res.send('success')
+        if(req.body == undefined || !req.body.username || 
+            !req.body.password || typeof req.body.username !== "string" || 
+            typeof req.body.password !== "string")
+        {
+            res.send({message: "Improper values or credentials not entered"})
+            return;
+        }
+        if(req.isAuthenticated())
+        {
+            res.send({message: "You are already logged in"})
+            return;
+        }
+        passport.authenticate('local', async (e, user, info) => 
+        {
+            if(e) return next(e);
+            if(info) return res.send(info);
+
+            req.login(user, async(err: Error) => {
+                if(err) return next(err);
+                return res.send(user);
+            });
+        })(req, res, next);
     }
 
     public getRouter() : Router {

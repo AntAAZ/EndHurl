@@ -4,19 +4,25 @@ import passport from 'passport';
 
 class LogoutRoute {
 
-    private router: Router = Router();
+    private router: Router = Router()
 
     constructor() 
     {    
-        this.router.get('/logout', this.handleGetReq);
+        this.router.get('/logout', this.handleGetReq)
     }
 
     private async handleGetReq(req: Request, res: Response, next: NextFunction)
     {
-        req.logout();
+        if(!req.isAuthenticated())
+        {
+            res.send({message: `You are not logged in`})
+            return;
+        }
+
+        req.logout()
         req.session.destroy(() => {
-            res.clearCookie('connect.sid');
-            res.redirect('/');
+            res.clearCookie('connect.sid')
+            res.send('success')
         });
     }
 

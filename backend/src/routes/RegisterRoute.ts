@@ -17,15 +17,27 @@ class RegisterRoute {
 
         const { username, password } = req.body;
 
-        if(req.body == undefined || !username || !password || typeof username !== "string" || typeof password !== "string")
+        if(!username || !password || typeof username !== "string" || typeof password !== "string")
         {
-            res.send("values are improper")
+            res.send({message: `Improper values or credentials not entered`})
+            return;
+        }
+        
+        if(req.isAuthenticated())
+        {
+            res.send({message: `You are already logged in`})
             return;
         }
 
-        User.findOne({username}, async(err: Error, doc: UserInterface) => {
+        User.findOne({username}, async(err: Error, doc: UserInterface) => 
+        {
             if(err) throw err
-            if(doc) res.send("user already exists")
+
+            if(doc) {
+                res.send({message: `The username already exists!`})
+                return;
+            }
+
             const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
             const newUser = new User({
@@ -34,10 +46,13 @@ class RegisterRoute {
             })
 
             await newUser.save();
-            res.send("success");
+            
+            req.login(newUser, async(err: Error) => {
+                if (err) throw err;
+                return res.send("success")
+            });
             
         })
-
         
     }
 
