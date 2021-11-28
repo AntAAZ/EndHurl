@@ -1,45 +1,79 @@
-import React , { useState, useContext } from 'react'
+import React, { useState, useContext } from 'react'
 import axios from 'axios'
-import { userDataContext } from '../contexts/UserDataContext';
-import { Navigate } from 'react-router-dom'
+import Alert from 'react-bootstrap/Alert'
+import { userDataContext } from '../contexts/UserDataContext'
+import { Button, Form, InputGroup, Row, Col } from 'react-bootstrap'
 
-export default function LoginPage()
-{
+export default function LoginPage() {
+
     const [username, setUsername] = useState<string>("")
     const [password, setPassword] = useState<string>("")
-    const [errorMessage, setErrorMessage] = useState<string>("")
-    const ctx = useContext(userDataContext)
-    
+    const [errorAlertMessage, setErrorAlertMessage] = useState<string>("")
+    const [errorAlertOpen, setErrorAlertOpen] = useState(false)
+    const [loading, error] = useContext(userDataContext)
+
+    if (loading) return <></>
+    if (!error) {
+        window.location.href = '/' 
+        return <></>
+    }
+
     const login = () => {
-        axios.post('http://localhost:3000/login', {
+
+        axios.post(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/login`, {
             username, password
         }, {
             withCredentials: true
-        }).then(res => {
-            if(res.data.message)
-            {
-                setErrorMessage(res.data.message)
-            }
-            else {
-                window.location.href = '/'
-            }
         })
+            .then(() => {
+                window.location.href = '/'
+            })
+            .catch((err) => {
+                setErrorAlertOpen(true)
+                setErrorAlertMessage(err.response.data.message)
+            })
     }
-
+   
     return (
-        <div>
-            {ctx ? 
-            (
-                <Navigate to = "/"/>
-            ) : (
-                <>
-                <h1>Login</h1>
-                <input type='text' placeholder='username' onChange={e => setUsername(e.target.value)}/>
-                <input type='text' placeholder='password' onChange={e => setPassword(e.target.value)}/>
-                <button onClick={login}>Login</button>
-                {{errorMessage} ? <p>{errorMessage}</p> : null}
-                </>
-            )}
+        <div className="loginPage">
+
+            <Row className="justify-content-center">
+                <Col xs={12} sm={10} md={10} lg={8} xl={6}>
+                    <Alert variant='info' show={!errorAlertOpen}>
+                        <Alert.Heading>Please enter your login details</Alert.Heading>
+                    </Alert>
+                    <Alert variant='danger' show={errorAlertOpen} onClose={() => setErrorAlertOpen(false)} dismissible>
+                        <Alert.Heading>{errorAlertMessage}</Alert.Heading>
+                    </Alert>
+                </Col>
+            </Row>
+            <Form className="text-center">
+                <Row className="justify-content-center">
+                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
+                        <Form.Label htmlFor="username" visuallyHidden>Username</Form.Label>
+                        <InputGroup>
+                            <InputGroup.Text>username</InputGroup.Text>
+                            <Form.Control
+                                id="username"
+                                type="username"
+                                aria-describedby="usernameHelp"
+                                onChange={e => setUsername(e.target.value)} />
+                        </InputGroup>
+                    </Col>
+
+                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
+                        <Form.Label htmlFor="password" visuallyHidden>Password</Form.Label>
+                        <InputGroup>
+                            <InputGroup.Text>password</InputGroup.Text>
+                            <Form.Control
+                                id="password"
+                                type="password"
+                                onChange={e => setPassword(e.target.value)} />
+                            <Button variant="success" onClick={login}>{'>>'}</Button>
+                        </InputGroup>
+                    </Col>
+                </Row>
+            </Form>
         </div>
     )
 }

@@ -1,37 +1,46 @@
 import axios from 'axios'
-import { useContext } from 'react'
+import React, { useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { userDataContext } from '../contexts/UserDataContext'
+import { Navbar, Nav, NavDropdown, Button } from 'react-bootstrap'
 
-export default function NavBar()
+export default function NavBar() 
 {
-    const ctx = useContext(userDataContext)
+    const [loading, error, user] = useContext(userDataContext)
 
     const logout = () => {
-        axios.get(`http://localhost:3000/logout`, {
+        axios.get(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/logout`, {
             withCredentials: true
-        }).then(res => {
-            if(res.data === "success")
-            {
-                window.location.href = '/'
-            }
-        })
+        }).then(() => window.location.href = '/')
     }
 
+    if (loading) return <></>
+
     return (
-        <div className="navContainer">
-            <Link to='/'>Home</Link>
-            {ctx ? (
-                <>
-                <Link onClick={logout} to='/'>Logout</Link>
-                <Link to='/profile'>Profile</Link>
-                </>
-            ) : (
-                <>
-                <Link to='/login'>Login</Link>
-                <Link to='/register'>Register</Link>
-                </>
-            )}
-        </div>
+        <Navbar collapseOnSelect expand="md" bg="dark" variant="dark">
+            <Navbar.Brand href="/" style={{ paddingLeft: "40px" }}>Home</Navbar.Brand>
+            <Navbar.Toggle aria-controls="responsive-navbar-nav" />
+            <Navbar.Collapse id="responsive-navbar-nav">
+                <Nav className="me-auto">
+                    <Nav.Link as={Link} to="/games" style={{ paddingLeft: "40px" }}>Games</Nav.Link>
+                    <Nav.Link as={Link} to="/maps">Maps</Nav.Link>
+                </Nav>
+                {error ?
+                    <Nav>
+                        <Nav.Link as={Link} to="/login">Login</Nav.Link>
+                        <Nav.Link as={Link} to="/register" style={{ paddingRight: "40px" }}>Register</Nav.Link>
+                    </Nav>
+                    :
+                    <Nav>
+                        <NavDropdown title={user.username} id="collasible-nav-dropdown" style={{ paddingRight: "40px" }}>
+                            <NavDropdown.Item as={Link} to="/profile">Profile</NavDropdown.Item>
+                            <NavDropdown.Item onClick={logout}>Logout</NavDropdown.Item>
+                        </NavDropdown>
+                    </Nav>
+                }
+            </Navbar.Collapse>
+        </Navbar>
     )
+
+
 }

@@ -3,12 +3,66 @@
     padding: 0;
     box-sizing: border-box;
 }
-.navContainer {
-    width: 100vw;
-    height: 100px;
-    background: black;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: space-evenly;
+:root {
+    --authAlertBorder: 0;
+    --authAlertTextColor: black;
+    --authAlertInfoColor: rgb(153, 179, 179);
+    --authAlertDangerColor: rgb(128, 109, 109);
+    --authPageBackgroundColor: rgb(42, 61, 61);
+    --inputGroupPadding: 5px 0;
 }
+
+.loginPage {
+    background-color: var(--authPageBackgroundColor)
+}
+
+.registerPage {
+    background-color: var(--authPageBackgroundColor)
+}
+
+.alert {
+    margin-top: 5px;
+}
+
+.captcha {
+    margin-top: 10px;
+}
+
+.alert-heading { 
+    text-align: center;
+}
+
+.loginPage .alert-info {
+    border: var(--authAlertBorder);
+    color: var(--authAlertBorder);
+    background-color: var(--authAlertInfoColor);
+}
+.loginPage .alert-danger {
+    border: var(--authAlertBorder);
+    color: var(--authAlertBorder);
+    background-color: var(--authAlertDangerColor);
+}
+
+.registerPage .alert-info {
+    border: var(--authAlertBorder);
+    color: var(--authAlertBorder);
+    background-color: var(--authAlertInfoColor);
+}
+.registerPage .alert-danger {
+    border: var(--authAlertBorder);
+    color: var(--authAlertBorder);
+    background-color: var(--authAlertDangerColor);
+}
+
+.loginPage .input-group {
+    padding: var(--inputGroupPadding);
+}
+.registerPage .input-group {
+    padding: var(--inputGroupPadding);
+}
+
+.alert-heading {
+    font-size: 16px;
+    font-family: 'Arial';
+}
+

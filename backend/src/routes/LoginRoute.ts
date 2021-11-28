@@ -1,43 +1,34 @@
 
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction, request, response } from 'express';
 import passport from 'passport';
 
 class LoginRoute {
 
     private router: Router = Router();
 
-    constructor() 
-    {    
+    constructor() {
         this.router.post('/login', this.handlePostReq);
     }
 
-    private async handlePostReq(req: Request, res: Response, next: NextFunction)
+    private async handlePostReq(req: Request, res: Response, next: NextFunction) 
     {
-        if(req.body == undefined || !req.body.username || 
-            !req.body.password || typeof req.body.username !== "string" || 
-            typeof req.body.password !== "string")
+        if(req.isAuthenticated()) 
         {
-            res.send({message: "Improper values or credentials not entered"})
-            return;
+            res.status(400).send({message: `You are already logged in`})
+            return
         }
-        if(req.isAuthenticated())
-        {
-            res.send({message: "You are already logged in"})
-            return;
-        }
-        passport.authenticate('local', async (e, user, info) => 
-        {
-            if(e) return next(e);
-            if(info) return res.send(info);
-
+        
+        passport.authenticate('local', (err, user, info) => {
+            if(err) return next(err)
+            if (!user) return res.status(401).send({ message: info.message })
             req.login(user, async(err: Error) => {
                 if(err) return next(err);
-                return res.send(user);
-            });
-        })(req, res, next);
+                return res.send({message: 'success'})
+            })
+        })(req, res, next)
     }
 
-    public getRouter() : Router {
+    public getRouter(): Router {
         return this.router;
     }
 }

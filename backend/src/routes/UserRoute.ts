@@ -1,8 +1,5 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
-import bcrypt from 'bcryptjs'
-import User from '../models/User';
-import passport from 'passport';
 
 class UserRoute {
 
@@ -13,9 +10,13 @@ class UserRoute {
         this.router.get('/user', this.handleGetReq);
     }
 
-    private async handleGetReq(req: Request, res: Response, next: NextFunction)
+    private handleGetReq(req: Request, res: Response, next: NextFunction)
     {
-        res.send(req.user);
+        if(!req.user)
+        {   
+            return res.status(401).send({message: "You are not logged in"})
+        }
+        return res.send(req.user);
     }
 
     public getRouter() : Router {
