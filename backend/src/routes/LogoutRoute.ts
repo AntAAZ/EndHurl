@@ -12,13 +12,13 @@ class LogoutRoute {
     private async handleGetReq(req: Request, res: Response, next: NextFunction) {
         if (!req.isAuthenticated()) {
             res.status(400).send({ message: `You are not logged in` })
-        } else {
-            req.logout()
-            req.session.destroy(() => {
-                res.clearCookie('connect.sid')
-                res.send('success')
-            });
-        }
+            return
+        } 
+        req.logout()
+        req.session.destroy(() => {
+            res.clearCookie('connect.sid')
+            res.send('success')
+        });
     }
 
     public getRouter(): Router {

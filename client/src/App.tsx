@@ -1,5 +1,5 @@
 import LoginPage from './pages/LoginPage';
-import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
 
 import './main.css';
 import React from 'react';
@@ -19,7 +19,7 @@ function App()
 				<Route path='/' element={<HomePage />}></Route>
 				<Route path='/login' element={<LoginPage />}></Route>
 				<Route path='/register' element={<RegisterPage />}></Route>
-				<Route path='/profile' element={<ProfilePage />}></Route>
+				<Route path='/settings' element={<SettingsPage />}></Route>
 			</Routes>
 			</UserDataContext>
 		</Router>

@@ -1,48 +1,46 @@
 import axios from 'axios'
 import Alert from 'react-bootstrap/Alert'
 import { Navigate } from 'react-router';
-import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { userDataContext } from '../contexts/UserDataContext'
-import React, { useState, useContext, useRef } from 'react';
+import React, { useState, useContext } from 'react';
 import { Form, Row, Col, InputGroup, Button } from 'react-bootstrap'
 
-export default function RegisterPage() 
+export default function ChangePass() 
 {
-    const captcha = useRef<any>()
-    const [captchaToken, setCaptchaToken] = useState<string>("")
-    const [username, setUsername] = useState<string>("")
-    const [password, setPassword] = useState<string>("")
-    const [confirmPassword, setConfirmPassword] = useState<string>("")
+    const [oldPassword, setOldPassword] = useState<string>("")
+    const [newPassword, setNewPassword] = useState<string>("")
+    const [confirmNewPassword, setConfirmNewPassword] = useState<string>("")
     const [passwordType, setPasswordType] = useState<string>("password")
+
     const [errorAlertMessage, setAlertErrorMessage] = useState<string>("")
     const [errorAlertOpen, setErrorAlertOpen] = useState(false)
-    const [loading, error] = useContext(userDataContext)
+    const [loading, error, user] = useContext(userDataContext)
     
     if (loading) return <></>
-    if (!error) return <Navigate to='/'/>
+    if (error) return <Navigate to='/login'/>
 
-    const register = () => {
-
-        if (password !== confirmPassword) 
+    const changePass = () => 
+    {
+        if (oldPassword === newPassword) 
         {
             setErrorAlertOpen(true)
-            setAlertErrorMessage("Both entered passwords must match!")
+            setAlertErrorMessage("The new password must be different")
+            return;
+        }
+        if(newPassword !== confirmNewPassword)
+        {
+            setAlertErrorMessage("Please confirm your new password")
             return;
         }
 
-        if (!captchaToken) 
-        {
-            setErrorAlertOpen(true)
-            setAlertErrorMessage("Make sure you have completed the captcha!")
-            return;
-        }
-
-        axios.post(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/register`, {
-            username, password
+        axios.post(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/update`, {
+            username: user.username, 
+            oldPassword,
+            newPassword
         }, {
             withCredentials: true
         })
-        .then(() => window.location.href = '/')
+        .then(() => window.location.href = '/settings')
         .catch((err) => {
             setErrorAlertOpen(true)
             setAlertErrorMessage(err.response.data.message)
@@ -54,13 +52,12 @@ export default function RegisterPage()
     }
 
     return (
-
         <div className="registerPage">
 
             <Row className="justify-content-center">
                 <Col xs={12} sm={10} md={7} lg={6} xl={5}>
                     <Alert variant='info' show={!errorAlertOpen}>
-                        <Alert.Heading>Please fill out the registration form</Alert.Heading>
+                        <Alert.Heading>Change password settings</Alert.Heading>
 
                     </Alert>
                     <Alert variant='danger' show={errorAlertOpen} onClose={() => setErrorAlertOpen(false)} dismissible>
@@ -71,50 +68,52 @@ export default function RegisterPage()
             <Form className="text-center">
                 <Row className="justify-content-center">
                     <Col xs={6} sm={5} md={5} lg={4} xl={3}>
-                        <Form.Label htmlFor="username" visuallyHidden>Username</Form.Label>
+                        <Form.Label htmlFor="username" visuallyHidden>username</Form.Label>
                         <InputGroup>
                             <InputGroup.Text>username</InputGroup.Text>
                             <Form.Control
                                 id="username"
                                 type="username"
-                                onChange={e => setUsername(e.target.value)}/>
+                                value={`${user.username}`} disabled/>
+                        </InputGroup>
+                    </Col>
+                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
+                        <Form.Label htmlFor="oldPassword" visuallyHidden>old pass</Form.Label>
+                        <InputGroup>
+                            <InputGroup.Text>old pass</InputGroup.Text>
+                            <Form.Control
+                                id="oldPassword"
+                                type={passwordType}
+                                aria-describedby='hi'
+                                onChange={e => setOldPassword(e.target.value)}/>
                         </InputGroup>
                     </Col>
                 </Row>
                 <Row className="justify-content-center">
                     <Col xs={6} sm={5} md={5} lg={4} xl={3}>
-                        <Form.Label htmlFor="password" visuallyHidden>Password</Form.Label>
+                        <Form.Label htmlFor="newPassword" visuallyHidden>new pass</Form.Label>
                         <InputGroup>
-                            <InputGroup.Text>password</InputGroup.Text>
+                            <InputGroup.Text>new pass</InputGroup.Text>
                             <Form.Control
-                                id="password"
+                                id="newPassword"
                                 type={passwordType}
-                                onChange={e => setPassword(e.target.value)}/>
+                                onChange={e => setNewPassword(e.target.value)}/>
                             <Button variant="info" onClick={togglePasswordType}>{'👁'}</Button>
-                        </InputGroup>
-                        <Form.Label htmlFor="confirmPassword" visuallyHidden>confirmPassword</Form.Label>
-                        <InputGroup>
-                            <InputGroup.Text>confPass</InputGroup.Text>
-                            <Form.Control
-                                id="confirmPassword"
-                                type={passwordType}
-                                onChange={e => setConfirmPassword(e.target.value)}/>
-                            <Button variant="success" onClick={register}>{'✓'}</Button>
                         </InputGroup>
                     </Col>
                     <Col xs={6} sm={5} md={5} lg={4} xl={3}>
-                        <div className="captcha">
-                            <HCaptcha
-                                ref={captcha}
-                                sitekey={process.env.REACT_APP_HCAPTCHA_KEY || ""}
-                                onVerify={token => setCaptchaToken(token)}
-                                onExpire={() => setCaptchaToken("")}
-                            />
-                        </div>
+                        <Form.Label htmlFor="confirmNewPassword" visuallyHidden>confirm pass</Form.Label>
+                        <InputGroup>
+                            <InputGroup.Text>confirm pass</InputGroup.Text>
+                            <Form.Control
+                                id="confirmNewPassword"
+                                type={passwordType}
+                                onChange={e => setConfirmNewPassword(e.target.value)}/>
+                            <Button variant="success" onClick={changePass}>{'>>'}</Button>
+                        </InputGroup>
                     </Col>
                 </Row>
             </Form>
         </div>
     )
-
 }

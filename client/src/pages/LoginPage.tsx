@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react'
 import axios from 'axios'
 import Alert from 'react-bootstrap/Alert'
+import { Navigate } from 'react-router'
 import { userDataContext } from '../contexts/UserDataContext'
 import { Button, Form, InputGroup, Row, Col } from 'react-bootstrap'
 
@@ -13,10 +14,7 @@ export default function LoginPage() {
     const [loading, error] = useContext(userDataContext)
 
     if (loading) return <></>
-    if (!error) {
-        window.location.href = '/' 
-        return <></>
-    }
+    if (!error) return <Navigate to='/'/>
 
     const login = () => {
 
@@ -25,13 +23,11 @@ export default function LoginPage() {
         }, {
             withCredentials: true
         })
-            .then(() => {
-                window.location.href = '/'
-            })
-            .catch((err) => {
-                setErrorAlertOpen(true)
-                setErrorAlertMessage(err.response.data.message)
-            })
+        .then(() => window.location.href = '/')
+        .catch((err) => {
+            setErrorAlertOpen(true)
+            setErrorAlertMessage(err.response.data.message)
+        })
     }
    
     return (
@@ -56,7 +52,6 @@ export default function LoginPage() {
                             <Form.Control
                                 id="username"
                                 type="username"
-                                aria-describedby="usernameHelp"
                                 onChange={e => setUsername(e.target.value)} />
                         </InputGroup>
                     </Col>

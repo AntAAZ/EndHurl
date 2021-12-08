@@ -3,6 +3,7 @@
     padding: 0;
     box-sizing: border-box;
 }
+
 :root {
     --authAlertBorder: 0;
     --authAlertTextColor: black;
@@ -11,13 +12,38 @@
     --authPageBackgroundColor: rgb(42, 61, 61);
     --inputGroupPadding: 5px 0;
 }
+#root .navbar {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+.navbar .navbar-brand {
+    padding-left: 30px;
+}
+.navbar .me-auto.navbar-nav .nav-link{
+    padding-left: 30px;
+}
+.navbar .navbar-collapse.collapsing {
+    display: flex;
+}
+.navbar .navbar-collapse.collapse.show {
+    display: flex;
+}
 
+.navbar .unreadMessages {
+    top: -10px;
+    left: -5px;
+    position: relative;
+}
 .loginPage {
-    background-color: var(--authPageBackgroundColor)
+    background-color: var(--authPageBackgroundColor);
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 .registerPage {
-    background-color: var(--authPageBackgroundColor)
+    background-color: var(--authPageBackgroundColor);
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 .alert {
@@ -25,6 +51,8 @@
 }
 
 .captcha {
+    width: 0;
+    transform: scale(1);
     margin-top: 10px;
 }
 

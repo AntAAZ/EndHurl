@@ -34,7 +34,10 @@ class PassportAuth {
                 (err: any, user: any) => 
                 {
                     const userInfo = {
-                        username: user.username
+                        username: user.username,
+                        avatar: user.avatar,
+                        loc: user.loc,
+                        bio: user.bio
                     }  
                     cb(err, userInfo)  
                 }

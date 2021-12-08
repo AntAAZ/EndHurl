@@ -12,10 +12,11 @@ class UserRoute {
 
     private handleGetReq(req: Request, res: Response, next: NextFunction)
     {
-        if(!req.user)
+        if(!req.isAuthenticated())
         {   
             return res.status(401).send({message: "You are not logged in"})
         }
+        console.log(req.user)
         return res.send(req.user);
     }
 

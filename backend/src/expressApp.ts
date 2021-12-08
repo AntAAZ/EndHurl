@@ -5,6 +5,7 @@ import PassportAuth from './PassportAuth'
 import cookieParser from 'cookie-parser'
 import session from 'express-session'
 import flash from 'connect-flash'
+import path from 'path'
 
 import LoginRoute from './routes/LoginRoute';
 import RegisterRoute from './routes/RegisterRoute';
@@ -13,6 +14,10 @@ import dotenv from 'dotenv'
 
 import MongoStore from 'connect-mongo';
 import LogoutRoute from './routes/LogoutRoute'
+import UpdateRoute from './routes/UpdateRoute'
+import AvatarUploadRoute from './routes/AvatarUploadRoute'
+import SetBioRoute from './routes/SetBioRoute'
+import SetLocRoute from './routes/SetLocRoute'
 
 class expressApp
 {
@@ -26,7 +31,10 @@ class expressApp
                 extended: true
             }))
             .use(cors({
-                origin: [`http://${process.env.SERVER_NAME}:${process.env.SERVER_PORT}`, `http://${process.env.SERVER_NAME}:${process.env.APP_PORT}`],
+                origin: [
+                    `http://${process.env.SERVER_NAME}:${process.env.SERVER_PORT}`, 
+                    `http://${process.env.SERVER_NAME}:${process.env.APP_PORT}`
+                ],
                 credentials: true
             }))
             .use(session({
@@ -48,8 +56,18 @@ class expressApp
 
     private mountRoutes() : void {
         const router: express.Router = express.Router();
-        router.use([RegisterRoute, LoginRoute, UserRoute, LogoutRoute]);
+        router.use([
+            RegisterRoute, 
+            LoginRoute, 
+            UserRoute, 
+            LogoutRoute, 
+            UpdateRoute, 
+            AvatarUploadRoute,
+            SetBioRoute,
+            SetLocRoute
+        ]);
         this.express.use('/', router);
+        this.express.use('/public/', express.static(path.join(__dirname, '../public')))
     }
 
     public getExpress() : express.Application {

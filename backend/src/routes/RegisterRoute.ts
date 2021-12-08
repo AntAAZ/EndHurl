@@ -49,10 +49,19 @@ class RegisterRoute {
 
         User.findOne({username}, async (err: Error, doc: UserInterface) => 
         {
-            if(err) throw err
+            if(err) 
+            {
+                res.status(422).send({
+                    message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
+                })
+                return
+            }
 
-            if(doc) return res.status(400).send({message: `The username already exists!`})
-
+            if(doc) 
+            {
+                return res.status(400).send({message: `The username already exists!`})
+            }
+            
             const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
             const newUser = new User({
@@ -62,7 +71,15 @@ class RegisterRoute {
 
             await newUser.save();
 
-            req.login(newUser, async(err: Error) => { if (err) throw err })
+            req.login(newUser, async(err: Error) => { 
+                if(err) 
+                {
+                    res.status(422).send({
+                        message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
+                    })
+                    return;
+                }
+            })
             return res.send("success")
         })
     }

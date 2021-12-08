@@ -8,6 +8,15 @@ const user/**: mongoose.SchemaDefinitionProperty<UserInterface>*/ = new mongoose
     },
     password : {
         type: String
+    },
+    avatar: {
+        type: String
+    },
+    loc: {
+        type: String
+    },
+    bio: {
+        type: String
     }
 })
 

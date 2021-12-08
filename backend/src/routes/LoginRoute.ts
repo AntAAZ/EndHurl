@@ -1,5 +1,5 @@
 
-import { Router, Request, Response, NextFunction, request, response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import passport from 'passport';
 
 class LoginRoute {
@@ -19,12 +19,32 @@ class LoginRoute {
         }
         
         passport.authenticate('local', (err, user, info) => {
-            if(err) return next(err)
-            if (!user) return res.status(401).send({ message: info.message })
+
+            if(err) 
+            {
+                res.status(422).send({
+                    message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
+                })
+                return
+            }
+
+            if (!user) 
+            {
+                res.status(401).send({ message: info.message })
+                return
+            }
+
             req.login(user, async(err: Error) => {
-                if(err) return next(err);
+                if(err) 
+                {
+                    res.status(422).send({
+                        message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
+                    })
+                    return
+                }
                 return res.send({message: 'success'})
             })
+
         })(req, res, next)
     }
 
