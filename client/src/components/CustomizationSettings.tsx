@@ -2,42 +2,42 @@ import axios from 'axios'
 import Alert from 'react-bootstrap/Alert'
 import { Navigate } from 'react-router';
 import { userDataContext } from '../contexts/UserDataContext'
-import React, { useState, useContext } from 'react';
-import { Upload } from 'react-bootstrap-icons'
+import React, { useState, useContext, useRef } from 'react';
+import { Upload, Receipt, Backspace } from 'react-bootstrap-icons'
 import { Form, Row, Col, InputGroup, Button, Image } from 'react-bootstrap'
 
-export default function CustomizationSettings() 
-{
+export default function CustomizationSettings() {
+    const inputRef = useRef<any>(null);
     const [bio, setBio] = useState<string>("")
     const [loc, setLoc] = useState<string>("")
     const [avatarImage, setAvatarImage] = useState<any>(null);
-
     const [errorAlertMessage, setAlertErrorMessage] = useState<string>("")
     const [errorAlertOpen, setErrorAlertOpen] = useState(false)
     const [loading, error, user] = useContext(userDataContext)
+
+    const handleFileSelection = () => {
+        inputRef.current?.click();
+    }
 
     if (loading) return <></>
     if (error) return <Navigate to='/login' />
 
     const setAvatar = (e: any) => {
-        if (e.target.files && e.target.files[0]) 
-        {
+        if (e.target.files && e.target.files[0]) {
             let img = e.target.files[0];
             let extension = img.name.split('.').pop()
 
-            if(extension === 'png' || extension === 'jpg' || extension === 'jpeg')
-            {
+            if (extension === 'png' || extension === 'jpg' || extension === 'jpeg') {
                 setAvatarImage(img)
             } else {
                 setErrorAlertOpen(true);
                 setAlertErrorMessage('The extension of the file must be png/jpg/jpeg')
             }
-        } 
+        }
     }
 
     const upload = () => {
-        if(avatarImage === null)
-        {
+        if (avatarImage === null) {
             setErrorAlertOpen(true);
             setAlertErrorMessage('Please select a file to upload')
             return
@@ -45,16 +45,15 @@ export default function CustomizationSettings()
         const formData: FormData = new FormData();
         formData.append('avatar', avatarImage);
 
-        axios.post(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/uploadAvatar`, formData, 
+        axios.post(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/uploadAvatar`, formData,
         {
             withCredentials: true
         })
-        
-        .then(() => window.location.href = '/settings')
+        .then(() => window.location.href = '/customization')
         .catch((err) => {
             setErrorAlertOpen(true)
             setAlertErrorMessage(err.response.data.message)
-         })
+        })
     }
 
     const updateBio = () => {
@@ -63,8 +62,7 @@ export default function CustomizationSettings()
         }, {
             withCredentials: true
         })
-        
-        .then(() => window.location.href = '/settings')
+        .then(() => window.location.href = '/customization')
         .catch((err) => {
             setErrorAlertOpen(true)
             setAlertErrorMessage(err.response.data.message)
@@ -77,8 +75,20 @@ export default function CustomizationSettings()
         }, {
             withCredentials: true
         })
-        
-        .then(() => window.location.href = '/settings')
+        .then(() => window.location.href = '/customization')
+        .catch((err) => {
+            setErrorAlertOpen(true)
+            setAlertErrorMessage(err.response.data.message)
+        })
+    }
+
+    const deleteAvatar = () => {
+        axios.post(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/deleteAvatar`, {
+            username: user.username, loc
+        }, {
+            withCredentials: true
+        })
+        .then(() => window.location.href = '/customization')
         .catch((err) => {
             setErrorAlertOpen(true)
             setAlertErrorMessage(err.response.data.message)
@@ -88,80 +98,108 @@ export default function CustomizationSettings()
     return (
         <div className="registerPage">
             <Row className="justify-content-center">
-                <Col xs={12} sm={10} md={7} lg={6} xl={5}>
+                <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
                     <Alert variant='info' show={!errorAlertOpen}>
-                        <Alert.Heading onClick={loading}>Customization settings</Alert.Heading>
-
+                        Customization settings panel
                     </Alert>
                     <Alert variant='danger' show={errorAlertOpen} onClose={() => setErrorAlertOpen(false)} dismissible>
-                        <Alert.Heading>{errorAlertMessage}</Alert.Heading>
+                        {errorAlertMessage}
                     </Alert>
                 </Col>
             </Row>
             <Form className="text-center">
+                {avatarImage === null &&
+                    <Row className="justify-content-center">
+                        <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
+                            <InputGroup>
+                                <Form.Control
+                                    ref={inputRef}
+                                    id="avatar"
+                                    type="file"
+                                    onChange={setAvatar}
+                                    hidden />
+                            </InputGroup>
+                        </Col>
+                    </Row>
+                }
                 <Row className="justify-content-center">
-                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
-                        <Form.Label htmlFor="avatar" style={{color: 'white'}}>
-                            Avatar image [will be automatically resized to 50x50 for cards 
-                            and 100x100 for publications. please use png/jpg/jpeg format]
-                        </Form.Label>
-                        <InputGroup>
-                            <Form.Control
-                                id="avatar"
-                                type="file"
-                                onChange={setAvatar}/>
-                                <Button variant="success" onClick={upload}><Upload/></Button>
-                        </InputGroup>
-                    </Col>
-                </Row>
-                
-                <Row className="justify-content-center">
-                    <Col xs={12} sm={12} md={6} lg={4} xl={3}>
-                        { avatarImage !== null ?     
+                    <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
+                        {avatarImage !== null ?
                             <>
-                            <span style={{color: 'white'}}> 50x50 </span>
-                            <Image src={URL.createObjectURL(avatarImage)} width="50px" height="50px"/>
-                            <span style={{color: 'white'}}> 100x100 </span>
-                            <Image src={URL.createObjectURL(avatarImage)} width="100px" height="100px"/>
+                                <Image src={URL.createObjectURL(avatarImage)} width="50px" height="50px" />
+                                <span style={{ paddingLeft: '10px', paddingRight: '10px' }}>
+                                    <Button variant="success" onClick={upload}>
+                                        save
+                                    </Button>
+                                </span>
+                                <span style={{ paddingRight: '10px' }}>
+                                    <Button variant="danger" onClick={() => setAvatarImage(null)}>
+                                        cancel
+                                    </Button>
+                                </span>
                             </> :
                             <>
-                            { user.avatar && 
-                                <>
-                                <span style={{color: 'white'}}> 50x50 </span>
-                                <Image src={user.avatar} width="50px" height="50px"/>
-                                <span style={{color: 'white'}}> 100x100 </span>
-                                <Image src={user.avatar} width="100px" height="100px"/>
-                                </>
-                            }
+                                {user.avatar ?
+                                    <>
+                                        <span style={{ paddingRight: '5px' }}>
+                                            <Image src={user.avatar} width="50px" height="50px" />
+                                        </span>
+                                        <span style={{ paddingLeft: '10px', paddingRight: '10px' }}>
+                                            <Button variant="success" onClick={handleFileSelection}>
+                                                replace
+                                            </Button>
+                                        </span>
+                                        <span>
+                                            <Button variant="danger" onClick={deleteAvatar}>
+                                                delete
+                                            </Button>
+                                        </span>
+                                    </>
+                                    :
+                                    <>
+                                        <Button onClick={handleFileSelection} variant="primary">
+                                            You don't have an avatar. Click here to upload one
+                                        </Button>
+                                    </>
+                                }
                             </>
                         }
                     </Col>
                 </Row>
+
             </Form>
             <Form className="text-center">
                 <Row className="justify-content-center">
-                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
+                    <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
                         <InputGroup>
-                            <InputGroup.Text>About you</InputGroup.Text>
+
+                            <InputGroup.Text style={{ paddingLeft: '5px', paddingRight: '5px' }}>
+                                <Receipt size="20px" />
+                            </InputGroup.Text>
+                            <Form.Control
+                                id="loc"
+                                type="text"
+                                placeholder={user.loc ? `your current location: ${user.loc}` : 'type your location [country]'}
+                                onChange={e => setLoc(e.target.value)} />
+                            <Button variant="success" onClick={updateLoc}>{'save'}</Button>
+                        </InputGroup>
+                    </Col>
+                </Row>
+
+                <Row className="justify-content-center">
+                    <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
+                        <InputGroup>
+                            <InputGroup.Text style={{ paddingLeft: '5px', paddingRight: '5px' }}>
+                                <Receipt size="20px" />
+                            </InputGroup.Text>
                             <Form.Control
                                 id="bio"
                                 as="textarea"
                                 type="textbox"
-                                placeholder={user.bio ? user.bio : ''}
-                                onChange={e => setBio(e.target.value)}/>
-                                <Button variant="success" onClick={updateBio}>{'>>'}</Button>
-                        </InputGroup>
-                    </Col>
-                    
-                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
-                        <InputGroup>
-                            <InputGroup.Text>Location</InputGroup.Text>
-                            <Form.Control 
-                                id="loc"
-                                type="text"
-                                placeholder={user.loc ? user.loc : ''}
-                                onChange={e => setLoc(e.target.value)}/>
-                                <Button variant="success" onClick={updateLoc}>{'>>'}</Button>
+                                rows={1}
+                                placeholder={user.bio ? `your current bio: ${user.bio}` : 'type a few things about you'}
+                                onChange={e => setBio(e.target.value)} />
+                            <Button variant="success" onClick={updateBio}>{'save'}</Button>
                         </InputGroup>
                     </Col>
                 </Row>

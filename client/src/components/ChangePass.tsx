@@ -4,6 +4,7 @@ import { Navigate } from 'react-router';
 import { userDataContext } from '../contexts/UserDataContext'
 import React, { useState, useContext } from 'react';
 import { Form, Row, Col, InputGroup, Button } from 'react-bootstrap'
+import { PersonFill, LockFill } from 'react-bootstrap-icons'
 
 export default function ChangePass() 
 {
@@ -40,7 +41,7 @@ export default function ChangePass()
         }, {
             withCredentials: true
         })
-        .then(() => window.location.href = '/settings')
+        .then(() => window.location.href = '/')
         .catch((err) => {
             setErrorAlertOpen(true)
             setAlertErrorMessage(err.response.data.message)
@@ -55,61 +56,61 @@ export default function ChangePass()
         <div className="registerPage">
 
             <Row className="justify-content-center">
-                <Col xs={12} sm={10} md={7} lg={6} xl={5}>
+                <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
                     <Alert variant='info' show={!errorAlertOpen}>
-                        <Alert.Heading>Change password settings</Alert.Heading>
-
+                        Change password settings panel
                     </Alert>
                     <Alert variant='danger' show={errorAlertOpen} onClose={() => setErrorAlertOpen(false)} dismissible>
-                        <Alert.Heading>{errorAlertMessage}</Alert.Heading>
+                        {errorAlertMessage}
                     </Alert>
                 </Col>
             </Row>
             <Form className="text-center">
+                
                 <Row className="justify-content-center">
-                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
-                        <Form.Label htmlFor="username" visuallyHidden>username</Form.Label>
-                        <InputGroup>
-                            <InputGroup.Text>username</InputGroup.Text>
-                            <Form.Control
-                                id="username"
-                                type="username"
-                                value={`${user.username}`} disabled/>
-                        </InputGroup>
-                    </Col>
-                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
+                    <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
                         <Form.Label htmlFor="oldPassword" visuallyHidden>old pass</Form.Label>
                         <InputGroup>
-                            <InputGroup.Text>old pass</InputGroup.Text>
+                            <InputGroup.Text style={{paddingLeft: '5px', paddingRight: '5px'}}>
+                                <LockFill size="20px"/>
+                            </InputGroup.Text>
                             <Form.Control
                                 id="oldPassword"
                                 type={passwordType}
-                                aria-describedby='hi'
+                                placeholder={`type your old password`}
                                 onChange={e => setOldPassword(e.target.value)}/>
                         </InputGroup>
                     </Col>
                 </Row>
                 <Row className="justify-content-center">
-                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
+                    <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
                         <Form.Label htmlFor="newPassword" visuallyHidden>new pass</Form.Label>
                         <InputGroup>
-                            <InputGroup.Text>new pass</InputGroup.Text>
+                            <InputGroup.Text style={{paddingLeft: '5px', paddingRight: '5px'}}>
+                                <LockFill size="20px"/>
+                            </InputGroup.Text>
                             <Form.Control
                                 id="newPassword"
                                 type={passwordType}
+                                placeholder={`type a new password`}
                                 onChange={e => setNewPassword(e.target.value)}/>
-                            <Button variant="info" onClick={togglePasswordType}>{'👁'}</Button>
+                            <Button variant="info" onClick={togglePasswordType}>{'Reveal'}</Button>
                         </InputGroup>
                     </Col>
-                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
+                </Row>
+                <Row className="justify-content-center">
+                    <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
                         <Form.Label htmlFor="confirmNewPassword" visuallyHidden>confirm pass</Form.Label>
                         <InputGroup>
-                            <InputGroup.Text>confirm pass</InputGroup.Text>
+                            <InputGroup.Text style={{paddingLeft: '5px', paddingRight: '5px'}}>
+                                <LockFill size="20px"/>
+                            </InputGroup.Text>
                             <Form.Control
                                 id="confirmNewPassword"
                                 type={passwordType}
+                                placeholder={`confirm your new password`}
                                 onChange={e => setConfirmNewPassword(e.target.value)}/>
-                            <Button variant="success" onClick={changePass}>{'>>'}</Button>
+                            <Button variant="success" onClick={changePass}>{'Submit'}</Button>
                         </InputGroup>
                     </Col>
                 </Row>

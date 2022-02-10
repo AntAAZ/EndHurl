@@ -50,11 +50,6 @@ class UpdateRoute {
                 })
                 return
             }
-            if(!doc) 
-            {
-                res.status(404).send({message: `This username doesn't exist`})
-                return
-            }
 
             bcrypt.compare(oldPassword, doc.password, async (err, result) => 
             {

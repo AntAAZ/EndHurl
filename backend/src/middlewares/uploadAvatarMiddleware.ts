@@ -1,7 +1,7 @@
 import { v4 } from 'uuid'
 import multer from 'multer'
 
-const DIR = './public/';
+const DIR = './public/avatars/';
 
 const storage = multer.diskStorage({
     destination: (req: any, file: any, cb: any) => {
@@ -13,7 +13,7 @@ const storage = multer.diskStorage({
     }
 });
 
-let upload = multer({
+let avatarUpload = multer({
     storage: storage,
     fileFilter: (req: any, file: any, cb: any) => {
         if (file.mimetype == "image/png" || file.mimetype == "image/jpg" || file.mimetype == "image/jpeg") {
@@ -25,4 +25,4 @@ let upload = multer({
     }
 });
 
-export default upload;
+export default avatarUpload;

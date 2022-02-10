@@ -1,39 +1,112 @@
 * {
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
 }
-
 :root {
     --authAlertBorder: 0;
     --authAlertTextColor: black;
-    --authAlertInfoColor: rgb(153, 179, 179);
+    --authAlertInfoColor: rgb(156, 143, 172);
     --authAlertDangerColor: rgb(128, 109, 109);
-    --authPageBackgroundColor: rgb(42, 61, 61);
+    --authPageBackgroundColor: rgb(44, 37, 54);
+    --mapPageBackgroundColor: rgb(73, 71, 59);
     --inputGroupPadding: 5px 0;
+}
+span {
+    color: white
+}
+@media (min-width:300px) {
+    #root .squareImagesResize {
+        background-size: 250px 250px;
+        width: 250px;
+        height: 250px;
+    }
+}
+@media (min-width:400px) {
+    #root .squareImagesResize {
+        background-size: 350px 350px;
+        width: 350px;
+        height: 350px;
+    }
+}
+@media (min-width:500px) {
+    #root .squareImagesResize {
+        background-size: 450px 450px;
+        width: 450px;
+        height: 450px;
+    }
+}
+@media (min-width:600px) {
+    #root .squareImagesResize{
+        background-size: 550px 550px;
+        width: 550px;
+        height: 550px;
+    }
+}
+@media (min-width:1000px) {
+    #root .squareImagesResize {
+        background-size: 500px 500px;
+        width: 500px;
+        height: 500px;
+    }
+}
+@media (min-width:1200px) {
+    #root .squareImagesResize {
+        background-size: 600px 600px;
+        width: 600px;
+        height: 600px;
+    }
+}
+@media (min-width:1400px) {
+    #root .squareImagesResize {
+        background-size: 700px 700px;
+        width: 700px;
+        height: 700px;
+    }
+}
+
+#root #createMap {
+    background-image: url("http://192.168.1.4:3000/public/assets/MapEdit.png");
+}
+#root #searchMap {
+    background-image: url("http://192.168.1.4:3000/public/assets/MapSearch.png");
+}
+#root #createMap:hover {
+    background-image: url("http://192.168.1.4:3000/public/assets/MapEditUpdate.png");
+}
+#root #searchMap:hover {
+    background-image: url("http://192.168.1.4:3000/public/assets/MapSearchUpdate.png");
 }
 #root .navbar {
     padding-top: 0px;
     padding-bottom: 0px;
-}
-.navbar .navbar-brand {
-    padding-left: 30px;
-}
-.navbar .me-auto.navbar-nav .nav-link{
-    padding-left: 30px;
-}
-.navbar .navbar-collapse.collapsing {
-    display: flex;
-}
-.navbar .navbar-collapse.collapse.show {
-    display: flex;
+    font-size: 140%;
 }
 
-.navbar .unreadMessages {
-    top: -10px;
-    left: -5px;
-    position: relative;
+.input-group .input-group-text {
+    padding: 0;
+    margin-bottom: 10px;
 }
+.form-control {
+    margin-bottom: 10px;
+}
+
+input {
+    font-size: 130% !important;
+    text-align: center;
+}
+button {
+    font-size: 130% !important;
+    margin-bottom: 10px !important;
+}
+textarea { 
+    font-size: 130% !important;
+    text-align: center;
+}
+
+.form-label {
+    margin-bottom: 0;
+}
+
 .loginPage {
     background-color: var(--authPageBackgroundColor);
     padding-top: 10px;
@@ -46,19 +119,45 @@
     padding-bottom: 10px;
 }
 
-.alert {
-    margin-top: 5px;
+.mapPage {
+    background-color: var(--mapPageBackgroundColor);
+    padding-bottom: 10px;
 }
 
+.mapRulesDisclaimer {
+    color: rgb(156, 156, 156);
+}
 .captcha {
-    width: 0;
-    transform: scale(1);
     margin-top: 10px;
 }
 
-.alert-heading { 
+.alert {
+    font-size: 150%;
     text-align: center;
+    padding-bottom: 0;
+    margin-top: 5px;
 }
+.navbar .dropdown-menu {
+    min-width: 0;
+    text-align: center;
+    font-size: 105%;
+    background-color: rgb(199, 197, 197);
+}
+
+.navbar .navbar-brand {
+    padding-left: 20px;
+}
+.navbar .me-auto.navbar-nav .nav-link{
+    padding-left: 20px;
+    padding-right: 0;
+}
+.navbar .navbar-collapse.collapsing {
+    display: flex;
+}
+.navbar .navbar-collapse.collapse.show {
+    display: flex;
+}
+
 
 .loginPage .alert-info {
     border: var(--authAlertBorder);
@@ -88,9 +187,3 @@
 .registerPage .input-group {
     padding: var(--inputGroupPadding);
 }
-
-.alert-heading {
-    font-size: 16px;
-    font-family: 'Arial';
-}
-

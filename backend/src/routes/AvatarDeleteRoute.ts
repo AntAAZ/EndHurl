@@ -2,12 +2,12 @@ import User from '../models/User';
 import { Router, Request, Response, NextFunction } from 'express';
 import uploadAvatar from '../middlewares/uploadAvatarMiddleware';
 
-class AvatarUploadRoute {
+class AvatarDeleteRoute {
 
     private router: Router = Router();
 
     constructor() {
-        this.router.post('/uploadAvatar', uploadAvatar.single('avatar'), this.handlePostReq);
+        this.router.post('/deleteAvatar', this.handlePostReq);
     }
 
     private async handlePostReq(req: any, res: Response, next: NextFunction) 
@@ -17,11 +17,7 @@ class AvatarUploadRoute {
             res.status(401).send({message: `You are not logged in`})
             return
         }
-        if(!req.file)
-        {
-            res.status(400).send({message: `Please select a file to upload`})
-            return
-        }
+
         let username = req.user.username
         User.findOne({username}, async (err: Error, doc: any) => 
         {
@@ -33,7 +29,7 @@ class AvatarUploadRoute {
                 return
             }
 
-            doc.avatar = `${`${req.protocol}://${req.get('host')}`}/public/avatars/${req.file.filename}`
+            doc.avatar = null;
             await doc.save();
 
             return res.send("success")
@@ -46,4 +42,4 @@ class AvatarUploadRoute {
     }
 }
 
-export default new AvatarUploadRoute().getRouter();
+export default new AvatarDeleteRoute().getRouter();

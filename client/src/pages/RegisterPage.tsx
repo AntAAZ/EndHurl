@@ -4,10 +4,11 @@ import { Navigate } from 'react-router';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
 import { userDataContext } from '../contexts/UserDataContext'
 import React, { useState, useContext, useRef } from 'react';
+import { PersonFill, LockFill } from 'react-bootstrap-icons'
 import { Form, Row, Col, InputGroup, Button } from 'react-bootstrap'
 
-export default function RegisterPage() 
-{
+export default function RegisterPage() {
+
     const captcha = useRef<any>()
     const [captchaToken, setCaptchaToken] = useState<string>("")
     const [username, setUsername] = useState<string>("")
@@ -17,21 +18,19 @@ export default function RegisterPage()
     const [errorAlertMessage, setAlertErrorMessage] = useState<string>("")
     const [errorAlertOpen, setErrorAlertOpen] = useState(false)
     const [loading, error] = useContext(userDataContext)
-    
+
     if (loading) return <></>
-    if (!error) return <Navigate to='/'/>
+    if (!error) return <Navigate to='/' />
 
     const register = () => {
 
-        if (password !== confirmPassword) 
-        {
+        if (password !== confirmPassword) {
             setErrorAlertOpen(true)
             setAlertErrorMessage("Both entered passwords must match!")
             return;
         }
 
-        if (!captchaToken) 
-        {
+        if (!captchaToken) {
             setErrorAlertOpen(true)
             setAlertErrorMessage("Make sure you have completed the captcha!")
             return;
@@ -42,11 +41,11 @@ export default function RegisterPage()
         }, {
             withCredentials: true
         })
-        .then(() => window.location.href = '/')
-        .catch((err) => {
-            setErrorAlertOpen(true)
-            setAlertErrorMessage(err.response.data.message)
-         })
+            .then(() => window.location.href = '/')
+            .catch((err) => {
+                setErrorAlertOpen(true)
+                setAlertErrorMessage(err.response.data.message)
+            })
     }
 
     const togglePasswordType = () => {
@@ -58,62 +57,72 @@ export default function RegisterPage()
         <div className="registerPage">
 
             <Row className="justify-content-center">
-                <Col xs={12} sm={10} md={7} lg={6} xl={5}>
+                <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
                     <Alert variant='info' show={!errorAlertOpen}>
-                        <Alert.Heading>Please fill out the registration form</Alert.Heading>
-
+                        Please fill out the registration form
                     </Alert>
                     <Alert variant='danger' show={errorAlertOpen} onClose={() => setErrorAlertOpen(false)} dismissible>
-                        <Alert.Heading>{errorAlertMessage}</Alert.Heading>
+                        {errorAlertMessage}
                     </Alert>
                 </Col>
             </Row>
-            <Form className="text-center">
-                <Row className="justify-content-center">
-                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
-                        <Form.Label htmlFor="username" visuallyHidden>Username</Form.Label>
-                        <InputGroup>
-                            <InputGroup.Text>username</InputGroup.Text>
-                            <Form.Control
-                                id="username"
-                                type="username"
-                                onChange={e => setUsername(e.target.value)}/>
-                        </InputGroup>
-                    </Col>
-                </Row>
-                <Row className="justify-content-center">
-                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
-                        <Form.Label htmlFor="password" visuallyHidden>Password</Form.Label>
-                        <InputGroup>
-                            <InputGroup.Text>password</InputGroup.Text>
-                            <Form.Control
-                                id="password"
-                                type={passwordType}
-                                onChange={e => setPassword(e.target.value)}/>
-                            <Button variant="info" onClick={togglePasswordType}>{'👁'}</Button>
-                        </InputGroup>
-                        <Form.Label htmlFor="confirmPassword" visuallyHidden>confirmPassword</Form.Label>
-                        <InputGroup>
-                            <InputGroup.Text>confPass</InputGroup.Text>
-                            <Form.Control
-                                id="confirmPassword"
-                                type={passwordType}
-                                onChange={e => setConfirmPassword(e.target.value)}/>
-                            <Button variant="success" onClick={register}>{'✓'}</Button>
-                        </InputGroup>
-                    </Col>
-                    <Col xs={6} sm={5} md={5} lg={4} xl={3}>
-                        <div className="captcha">
-                            <HCaptcha
-                                ref={captcha}
-                                sitekey={process.env.REACT_APP_HCAPTCHA_KEY || ""}
-                                onVerify={token => setCaptchaToken(token)}
-                                onExpire={() => setCaptchaToken("")}
-                            />
-                        </div>
-                    </Col>
-                </Row>
-            </Form>
+            <Row className="justify-content-center">
+                <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
+                    <InputGroup>
+                        <InputGroup.Text>
+                            <PersonFill size="30px" />
+                        </InputGroup.Text>
+                        <Form.Control
+                            id="username"
+                            type="username"
+                            placeholder="username (3 - 15 symbols)"
+                            onChange={e => setUsername(e.target.value)} />
+                    </InputGroup>
+                </Col>
+            </Row>
+            <Row className="justify-content-center">
+                <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
+                    <InputGroup>
+                        <InputGroup.Text style={{ paddingLeft: '5px', paddingRight: '5px' }}>
+                            <LockFill size="20px" />
+                        </InputGroup.Text>
+                        <Form.Control
+                            id="password"
+                            type={passwordType}
+                            placeholder="password ( > 6 symbols )"
+                            onChange={e => setPassword(e.target.value)} />
+                    </InputGroup>
+                </Col>
+            </Row>
+            <Row className="justify-content-center">
+                <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
+                    <InputGroup>
+                        <InputGroup.Text style={{ paddingLeft: '5px', paddingRight: '5px' }}>
+                            <LockFill size="20px" />
+                        </InputGroup.Text>
+                        <Form.Control
+                            id="confirmPassword"
+                            type={passwordType}
+                            placeholder="confirm your password"
+                            onChange={e => setConfirmPassword(e.target.value)} />
+                    </InputGroup>
+                </Col>
+            </Row>
+            <Row className="justify-content-center">
+                <Col xs='auto'>
+                    <span className="captcha">
+                        <HCaptcha
+                            ref={captcha}
+                            sitekey={process.env.REACT_APP_HCAPTCHA_KEY || ""}
+                            onVerify={token => setCaptchaToken(token)}
+                            onExpire={() => setCaptchaToken("")}
+                        />
+                    </span>
+                </Col>
+                <Col xs='auto'>
+                    <Button variant="success" onClick={register} style={{marginTop: '10px'}}>{'Register account'}</Button>
+                </Col>
+            </Row>
         </div>
     )
 

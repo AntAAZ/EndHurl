@@ -3,7 +3,7 @@ import React, { useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { userDataContext } from '../contexts/UserDataContext'
 import { Navbar, Nav, NavDropdown, Image, Badge } from 'react-bootstrap'
-import { BellFill, ChatTextFill, PersonFill } from 'react-bootstrap-icons'
+import { BellFill, PersonFill, EnvelopeFill, Discord } from 'react-bootstrap-icons'
 
 export default function NavBar() 
 {
@@ -25,9 +25,10 @@ export default function NavBar()
                     <Nav.Link as={Link} to="/games">Games</Nav.Link>
                     <Nav.Link as={Link} to="/maps">Maps</Nav.Link>
                     <Nav.Link as={Link} to="/players">Players</Nav.Link>
+                    <Nav.Link as={Link} to="/discord"><Discord color="rgba(103, 166, 214, 0.8)" size="28px"/></Nav.Link>
                 </Nav>
-                {error ?
-                    <Nav>
+                {error ? 
+                    <Nav style={{paddingRight: '20px'}}>
                         <Nav.Link as={Link} to="/login">Login</Nav.Link>
                         <Nav.Link as={Link} to="/register">Register</Nav.Link>
                     </Nav>
@@ -35,16 +36,16 @@ export default function NavBar()
                     <>
                     <Nav>
                         <Nav.Link>
-                            <ChatTextFill color="white"/> 
-                            <Badge className="unreadMessages" pill>2</Badge>
+                            <EnvelopeFill color="gray"/> 
                         </Nav.Link>
                         <Nav.Link>
                             <BellFill color="orange"/>
                         </Nav.Link>
-                        <NavDropdown title={user.username} id="collasible-nav-dropdown">
-                            <NavDropdown.Item as={Link} to={`/players/${user.username}`}>Stats</NavDropdown.Item>
-                            <NavDropdown.Item as={Link} to="/settings">Settings</NavDropdown.Item>
+                        <NavDropdown title={user.username} align="end" id="collasible-nav-dropdown">
+                            <NavDropdown.Item as={Link} to={`/players/${user.username}`}>Profile</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/customization">Customize</NavDropdown.Item>
                             
+                            <NavDropdown.Item as={Link} to="/account">Settings</NavDropdown.Item>
                             <NavDropdown.Item onClick={logout}>Logout</NavDropdown.Item>
                         </NavDropdown>
                     </Nav>
@@ -53,6 +54,7 @@ export default function NavBar()
                             <Image className="nav-image" src={user.avatar} width="50px" height="50px"/> :
                             <PersonFill width="50px" height="50px" style={{color: 'white'}}/>
                         }
+                        
                     </Nav>
                     </>
                 }

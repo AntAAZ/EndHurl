@@ -12,12 +12,12 @@ class PassportAuth {
                 (err: any, user: any) => 
                 {
                     if(err) throw err
-                    if(!user) return done(null, false, { message: 'Incorrect username or password' })
+                    if(!user) return done(null, false, { message: `This user doesn't exist` })
                     bcrypt.compare(password, user.password, (err, result) => 
                     {
                         if(err) throw err
-                        if(result === true) return done(null, user);
-                        return done(null, false, { message: 'Incorrect username or password' });   
+                        if(result === true) return done(null, user)
+                        return done(null, false, { message: 'Incorrect username or password' }); 
                     })
                 }
             )

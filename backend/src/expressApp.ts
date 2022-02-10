@@ -18,6 +18,7 @@ import UpdateRoute from './routes/UpdateRoute'
 import AvatarUploadRoute from './routes/AvatarUploadRoute'
 import SetBioRoute from './routes/SetBioRoute'
 import SetLocRoute from './routes/SetLocRoute'
+import AvatarDeleteRoute from './routes/AvatarDeleteRoute'
 
 class expressApp
 {
@@ -63,6 +64,7 @@ class expressApp
             LogoutRoute, 
             UpdateRoute, 
             AvatarUploadRoute,
+            AvatarDeleteRoute,
             SetBioRoute,
             SetLocRoute
         ]);
