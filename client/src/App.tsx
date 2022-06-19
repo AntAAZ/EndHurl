@@ -1,16 +1,21 @@
-import LoginPage from './pages/LoginPage';
-
 import './main.css';
 import React from 'react';
-import HomePage from './pages/HomePage';
-import RegisterPage from './pages/RegisterPage';
-import MapsPage from './pages/MapsPage';
+
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import UserDataContext from './contexts/UserDataContext';
-import CustomizationSettings from './components/CustomizationSettings';
 import ChangePass from './components/ChangePass';
+import CustomizationSettings from './components/CustomizationSettings';
+
+
+import HomePage from './pages/HomePage';
+import MapsPage from './pages/MapsPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import CreateMapPage from './pages/CreateMapPage';
+
+import UserDataContext from './contexts/UserDataContext';
 
 function App() 
 {
@@ -25,6 +30,8 @@ function App()
 				<Route path='/maps' element={<MapsPage />}></Route>
 				<Route path='/customization' element={<CustomizationSettings />}></Route>
 				<Route path='/account' element={<ChangePass />}></Route>
+				<Route path='/maps/create' element={<CreateMapPage />}></Route>
+
 			</Routes>
 			<Footer />
 			</UserDataContext>

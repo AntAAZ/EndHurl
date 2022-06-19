@@ -4,7 +4,7 @@ import { Navigate } from 'react-router';
 import { userDataContext } from '../contexts/UserDataContext'
 import React, { useState, useContext } from 'react';
 import { Form, Row, Col, InputGroup, Button } from 'react-bootstrap'
-import { PersonFill, LockFill } from 'react-bootstrap-icons'
+import { LockFill } from 'react-bootstrap-icons'
 
 export default function ChangePass() 
 {

@@ -3,7 +3,7 @@ import Alert from 'react-bootstrap/Alert'
 import { Navigate } from 'react-router';
 import { userDataContext } from '../contexts/UserDataContext'
 import React, { useState, useContext, useRef } from 'react';
-import { Upload, Receipt, Backspace } from 'react-bootstrap-icons'
+import { Receipt } from 'react-bootstrap-icons'
 import { Form, Row, Col, InputGroup, Button, Image } from 'react-bootstrap'
 
 export default function CustomizationSettings() {
@@ -173,13 +173,13 @@ export default function CustomizationSettings() {
                     <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
                         <InputGroup>
 
-                            <InputGroup.Text style={{ paddingLeft: '5px', paddingRight: '5px' }}>
-                                <Receipt size="20px" />
+                            <InputGroup.Text style={{ paddingLeft: '10px', paddingRight: '10px' }}>
+                                location
                             </InputGroup.Text>
                             <Form.Control
                                 id="loc"
                                 type="text"
-                                placeholder={user.loc ? `your current location: ${user.loc}` : 'type your location [country]'}
+                                placeholder={user.loc ? `${user.loc}` : 'share your location'}
                                 onChange={e => setLoc(e.target.value)} />
                             <Button variant="success" onClick={updateLoc}>{'save'}</Button>
                         </InputGroup>
@@ -189,15 +189,15 @@ export default function CustomizationSettings() {
                 <Row className="justify-content-center">
                     <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
                         <InputGroup>
-                            <InputGroup.Text style={{ paddingLeft: '5px', paddingRight: '5px' }}>
-                                <Receipt size="20px" />
+                            <InputGroup.Text style={{ paddingLeft: '10px', paddingRight: '10px' }}>
+                                about you
                             </InputGroup.Text>
                             <Form.Control
                                 id="bio"
                                 as="textarea"
                                 type="textbox"
-                                rows={1}
-                                placeholder={user.bio ? `your current bio: ${user.bio}` : 'type a few things about you'}
+                                rows={3}
+                                placeholder={user.bio ? `${user.bio}` : 'type a few things about you'}
                                 onChange={e => setBio(e.target.value)} />
                             <Button variant="success" onClick={updateBio}>{'save'}</Button>
                         </InputGroup>

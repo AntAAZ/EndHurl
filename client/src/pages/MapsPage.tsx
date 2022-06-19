@@ -3,6 +3,7 @@ import React, { useState, useContext } from 'react';
 import { userDataContext } from '../contexts/UserDataContext'
 import { Button, Form, InputGroup, Row, Col } from 'react-bootstrap'
 import LoginPage from './LoginPage';
+import { Link } from 'react-router-dom'
 
 export default function MapsPage() {
 
@@ -13,7 +14,9 @@ export default function MapsPage() {
             {error ? <LoginPage/> :
                 <> 
                     <Row className='justify-content-evenly'>
-                        <div className="squareImagesResize" id="createMap"></div>
+                        <div className="squareImagesResize" id="createMap" onClick={
+                            () => window.location.href = '/maps/create'
+                        }></div>
                         <div className="squareImagesResize" id="searchMap"></div>
                     </Row>
                 </>

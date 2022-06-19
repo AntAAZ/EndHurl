@@ -2,7 +2,7 @@ import axios from 'axios'
 import React, { useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { userDataContext } from '../contexts/UserDataContext'
-import { Navbar, Nav, NavDropdown, Image, Badge } from 'react-bootstrap'
+import { Navbar, Nav, NavDropdown, Image } from 'react-bootstrap'
 import { BellFill, PersonFill, EnvelopeFill, Discord } from 'react-bootstrap-icons'
 
 export default function NavBar() 
