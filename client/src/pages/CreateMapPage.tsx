@@ -11,10 +11,9 @@ export default function CreateMapPage() {
 
   const mapScale: any = useRef(1)
   const mapScaleProperties: any = useRef({
-    step: 1.1,
-    min: 0.5,
-    max: 5
+    step: 1.1, min: 0.5, max: 5
   })
+
   const canvasRef: any = useRef(null)
   const requestIdRef: any = useRef()
   const mousePos: any = useRef([0, 0])
@@ -25,8 +24,12 @@ export default function CreateMapPage() {
   const [coords, setCoords] = useState<any>([])
   const [mouseCoords, setMouseCoords] = useState<any>([0, 0])
   //
+  const borders: any = useRef([])
+  const isDrawingBorder: any = useRef(false)
+  const drawBorderHelperPos: any = useRef([])
   const [mapLoading, setMapLoading] = useState(false)
   const [loading, error, user] = useContext(userDataContext)
+
 
   useEffect(() => {
     mapRef.current.src = mapUrl
@@ -40,6 +43,7 @@ export default function CreateMapPage() {
 
   const addEventListeners = () => {
     mapRef.current.addEventListener('load', mapImageLoad)
+    window.addEventListener('keyup', keyUp)
     window.addEventListener('mousedown', mouseDown)
     window.addEventListener('mouseup', mouseUp)
     window.addEventListener('mousemove', mouseMove)
@@ -48,11 +52,19 @@ export default function CreateMapPage() {
 
   const unmountEventListeners = () => {
     mapRef.current.removeEventListener('load', mapImageLoad)
+    window.removeEventListener('keyup', keyUp)
     window.removeEventListener('mousedown', mouseDown)
     window.removeEventListener('mouseup', mouseUp)
     window.removeEventListener('mousemove', mouseMove)
     window.removeEventListener('wheel', mouseWheel)
     if(intervalCanvasRef.current != null) clearInterval(intervalCanvasRef.current)
+  }
+
+  const keyUp = (e: any) => {
+    if(e.code == 'KeyD')
+    {
+      isDrawingBorder.current = !isDrawingBorder.current
+    }
   }
   
   const mapImageLoad = (e: any) => {
@@ -63,19 +75,54 @@ export default function CreateMapPage() {
   }
 
   const mouseDown = (e: any) => {
+    if(isDrawingBorder.current || !canvasRef.current) return
     isDragging.current = true
     mousePos.current = getMousePos(e)
   }
   const mouseUp = (e: any) => {
+    if(!canvasRef.current) return
     isDragging.current = false
     mousePos.current = getMousePos(e)
+    if(isDrawingBorder.current)
+    {
+      let rect = canvasRef.current.getBoundingClientRect();
+      let coordX = (mapOffsetX.current * mapScale.current) % mapRef.current.width
+      coordX < 0 && (coordX += mapRef.current.width)
+      let ctx: any = canvasRef.current.getContext('2d')
+      ctx.lineWidth =  mapScaleProperties.current.max - mapScale.current
+      if(borders.current.length == 0)
+      {
+        ctx.beginPath()
+        ctx.moveTo(mousePos.current[0] - rect.left, mousePos.current[1] - rect.top)
+        drawBorderHelperPos.current = [mousePos.current[0] - rect.left, mousePos.current[1] - rect.top]
+      } else {
+        ctx.strokeStyle = 'red'
+        ctx.lineTo(mousePos.current[0] - rect.left, mousePos.current[1] - rect.top)
+        drawBorderHelperPos.current = [mousePos.current[0] - rect.left, mousePos.current[1] - rect.top]
+        ctx.stroke()
+      }
+      let trueMousePosition = [
+        (mousePos.current[0] - rect.left)*mapScale.current + coordX,
+        (mousePos.current[1] - rect.top)*mapScale.current + mapOffsetY.current*mapScale.current
+      ]
+      if(borders.current.length > 0 &&
+          trueMousePosition[0] + mapScale.current*mapScaleProperties.current.max > borders.current[0][0] && 
+          trueMousePosition[0] - mapScale.current*mapScaleProperties.current.max < borders.current[0][0] &&
+          trueMousePosition[1] + mapScale.current*mapScaleProperties.current.max > borders.current[0][1] && 
+          trueMousePosition[1] - mapScale.current*mapScaleProperties.current.max < borders.current[0][1] ){
+        
+        alert('please')
+        ///handle prompting here
+        return
+      }
+      borders.current.push(trueMousePosition)
+    }
   }
 
   const mouseMove = (e: any) => {
-    if(!isDragging.current) return
 
+    if(!isDragging.current || !canvasRef.current) return
     let newPos = getMousePos(e)
-    
     updateMapOffset(mapOffsetX.current + (mousePos.current[0] - newPos[0]), mapOffsetY.current)
 
     let mouseOffsetY = (mousePos.current[1] - newPos[1])
@@ -92,6 +139,7 @@ export default function CreateMapPage() {
   const mouseWheel = (e: any) => {
     e.preventDefault();
     e.stopPropagation()
+    if(isDrawingBorder.current) return
     let scaleProperties = mapScaleProperties.current
     if(e.deltaY > 0)
     {
@@ -147,7 +195,7 @@ export default function CreateMapPage() {
     if(offsetX*mapScale.current >= mapImage.width || 
       offsetX*mapScale.current <= -mapImage.width) offsetX %= mapImage.width/mapScale.current
 
-    ctx.clearRect(-mapImage.width,-mapImage.height, mapImage.width, mapImage.height)
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
     
     ctx.drawImage(mapImage, 
       offsetX*mapScale.current, offsetY*mapScale.current, 
