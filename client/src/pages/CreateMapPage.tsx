@@ -2,6 +2,7 @@
 import React, { useState, useContext, useRef, useEffect, useCallback } from 'react';
 import { userDataContext } from '../contexts/UserDataContext'
 import { Button, Modal, Form } from 'react-bootstrap'
+import Draggable from 'react-draggable'
 import MapsPage from './MapsPage';
 
 export default function CreateMapPage() {
@@ -24,6 +25,16 @@ export default function CreateMapPage() {
   })
   const formProperties: any = useRef({
     countryNameCharsLimit: [3, 50]
+  })
+  const modalProperties: any = useRef({
+    color: 'white',
+    display: 'flex',
+    fontSize: 20,
+    fontStyle: 'italic',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
+    borderColor: '#282929'
   })
   const canvasRef: any = useRef(null)
   const requestIdRef: any = useRef()
@@ -91,9 +102,9 @@ export default function CreateMapPage() {
   const drawBorderStartPoint = (ctx: any, color: any) => {
     ctx.beginPath()
     ctx.fillStyle = color
-    ctx.arc(drawBorderHelperPos.current[0][0], drawBorderHelperPos.current[0][1], 
-      (mapScaleProperties.current.max - mapScale.current)/1.25, 0, 2 * Math.PI)
-    
+    ctx.arc(drawBorderHelperPos.current[0][0], drawBorderHelperPos.current[0][1],
+      (mapScaleProperties.current.max - mapScale.current) / 1.25, 0, 2 * Math.PI)
+
     ctx.fill()
     ctx.closePath()
   }
@@ -101,16 +112,15 @@ export default function CreateMapPage() {
     let ctx: any = canvasRef.current.getContext('2d')
 
     drawMap(mapOffsetX.current, mapOffsetY.current)
-    if(drawBorderHelperPos.current.length == 0) return
+    if (drawBorderHelperPos.current.length == 0) return
 
     drawBorderStartPoint(ctx, drawBorderProperties.current.startPointColor)
 
     ctx.beginPath()
     ctx.strokeStyle = drawBorderProperties.current.borderLineColor
     ctx.lineWidth = mapScaleProperties.current.max - mapScale.current
-    for(let i = 1; i < drawBorderHelperPos.current.length; i++)
-    {
-      ctx.moveTo(drawBorderHelperPos.current[i-1][0], drawBorderHelperPos.current[i-1][1])
+    for (let i = 1; i < drawBorderHelperPos.current.length; i++) {
+      ctx.moveTo(drawBorderHelperPos.current[i - 1][0], drawBorderHelperPos.current[i - 1][1])
       ctx.lineTo(drawBorderHelperPos.current[i][0], drawBorderHelperPos.current[i][1])
       ctx.stroke()
     }
@@ -125,21 +135,17 @@ export default function CreateMapPage() {
 
   const keyUp = (e: any) => {
     // to turn the key combinations into a beautiful tool menu instead (TO:DoO)
-    if (e.code == 'KeyD') 
-    {
+    if (e.code == 'KeyD') {
       isDrawingBorder.current = !isDrawingBorder.current
-      if(!isDrawingBorder.current)
-      {
+      if (!isDrawingBorder.current) {
         drawMap(mapOffsetX.current, mapOffsetY.current)
         return
       }
       borders.current = []
       return
     }
-    if (e.code == 'KeyZ') 
-    {
-      if(!isDrawingBorder.current || borders.current.length == 0)
-      {
+    if (e.code == 'KeyZ') {
+      if (!isDrawingBorder.current || borders.current.length == 0) {
         return
       }
       borders.current.pop()
@@ -197,11 +203,11 @@ export default function CreateMapPage() {
       trueMousePosition[0] - mapScale.current * mapScaleProperties.current.max < borders.current[0][0] &&
       trueMousePosition[1] + mapScale.current * mapScaleProperties.current.max > borders.current[0][1] &&
       trueMousePosition[1] - mapScale.current * mapScaleProperties.current.max < borders.current[0][1]) {
-        
+
       ctx.beginPath()
       ctx.strokeStyle = drawBorderProperties.current.connectingLineColor
       ctx.moveTo(
-        drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][0], 
+        drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][0],
         drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][1]
       )
       ctx.lineTo(drawBorderHelperPos.current[0][0], drawBorderHelperPos.current[0][1])
@@ -216,7 +222,7 @@ export default function CreateMapPage() {
     ctx.beginPath()
     ctx.strokeStyle = drawBorderProperties.current.borderLineColor
     ctx.moveTo(
-      drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][0], 
+      drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][0],
       drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][1]
     )
     ctx.lineTo(mousePos.current[0] - rect.left, mousePos.current[1] - rect.top)
@@ -347,30 +353,40 @@ export default function CreateMapPage() {
         zoom({`${mapScale.current}`})
       </p>
       <canvas ref={canvasRef} id='canvas-id' />
+
       <Modal
         show={saveBordersModalShow}
         onHide={handleBordersModalOnClose}
         backdrop="static"
         keyboard={false}
       >
-        <Modal.Header closeButton>
-          <Modal.Title>Save the currently connected borders</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Group >
-              <Form.Label>
-                Enter a country name: [alphabetic,&nbsp;  
-                {formProperties.current.countryNameCharsLimit[0]} -&nbsp;  
-                {formProperties.current.countryNameCharsLimit[1]} chars]
-              </Form.Label>
-              <Form.Control type="text" onChange={handleCountryNameChange} 
-                  value={countryName} placeholder=""/>           
-          </Form.Group>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="primary"onClick={handleBordersSave}>Save</Button>
-          <Button variant="secondary" onClick={handleBordersModalOnClose}>Cancel</Button>
-        </Modal.Footer>
+        <Draggable>
+          <div>
+            <Modal.Header style={modalProperties.current}>
+              <Modal.Title>Save currently connected borders</Modal.Title>
+              <Button className={'btn-close btn-close-white'}
+                style={{ marginLeft: '15px', marginTop: '10px', padding: 0 }}
+                onClick={handleBordersModalOnClose}></Button>
+            </Modal.Header>
+            <Modal.Body style={modalProperties.current}>
+              <Form.Group >
+                <Form.Label>
+                  Enter a country name [alphabetic,&nbsp;
+                  {formProperties.current.countryNameCharsLimit[0]} -&nbsp;
+                  {formProperties.current.countryNameCharsLimit[1]} chars]
+                </Form.Label>
+                <Form.Control type="text" onChange={handleCountryNameChange}
+                  value={countryName} placeholder="" />
+              </Form.Group>
+            </Modal.Body>
+            <Modal.Footer style={modalProperties.current}>
+              <Button variant="primary"
+                style={{ marginRight: '15px' }}
+                onClick={handleBordersSave}>Save borders</Button>
+              <Button variant="secondary" onClick={handleBordersModalOnClose}>Cancel link</Button>
+            </Modal.Footer>
+          </div>
+        </Draggable>
       </Modal>
     </div>
   )

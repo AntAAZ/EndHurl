@@ -105,6 +105,11 @@ textarea {
     text-align: center;
 }
 
+.modal-dialog .modal-content {
+    background-color: transparent;
+    border: 0;
+}
+
 .form-label {
     margin-bottom: 0;
 }
