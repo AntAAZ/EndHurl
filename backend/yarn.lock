@@ -314,7 +314,7 @@
     "ieee754" "^1.1.13"
 
 "busboy@^0.2.11":
-  "integrity" "sha1-bCpiLvz0fFe7vh4qnDetNseSVFM="
+  "integrity" "sha512-InWFDomvlkEj+xWLBfU3AvnbVYqeTWmQopiW0tWWEy5yehYm2YkGEc59sUmw/4ty5Zj/b0WHGs1LgecuBSBGrg=="
   "resolved" "https://registry.npmjs.org/busboy/-/busboy-0.2.14.tgz"
   "version" "0.2.14"
   dependencies:
@@ -555,7 +555,7 @@
   "version" "1.0.4"
 
 "dicer@0.2.5":
-  "integrity" "sha1-WZbAhrszIYyBLAkL3cCc0S+stw8="
+  "integrity" "sha512-FDvbtnq7dzlPz0wyYlOExifDEZcu8h+rErEXgfxqmLfRfC/kJidEFh4+effJRO3P0xmfqyPbSMG0LveNRfTKVg=="
   "resolved" "https://registry.npmjs.org/dicer/-/dicer-0.2.5.tgz"
   "version" "0.2.5"
   dependencies:
@@ -1013,9 +1013,9 @@
     "brace-expansion" "^1.1.7"
 
 "minimist@^1.2.0", "minimist@^1.2.5":
-  "integrity" "sha512-FM9nNUYrRBAELZQT3xeZQ7fmMOBg6nWNmJKTcgsJeaLstP/UODVpGsr5OhXhhXg6f+qtJ8uiZ+PUxkDWcgIXLw=="
-  "resolved" "https://registry.npmjs.org/minimist/-/minimist-1.2.5.tgz"
-  "version" "1.2.5"
+  "integrity" "sha512-Jsjnk4bw3YJqYzbdyBiNsPWHPfO++UGG749Cxs6peCu5Xg4nrena6OVxOYxrQTqww0Jmwt+Ref8rggumkTLz9Q=="
+  "resolved" "https://registry.npmjs.org/minimist/-/minimist-1.2.6.tgz"
+  "version" "1.2.6"
 
 "mkdirp@^0.5.4":
   "integrity" "sha512-NKmAlESf6jMGym1++R0Ra7wvhV+wFW63FaSOFPwRahvea0gMUcGUhVeAg/0BC0wiv9ih5NYPB1Wn1UEI1/L+xQ=="

@@ -16,7 +16,7 @@ class UserRoute {
         {   
             return res.status(401).send({message: "You are not logged in"})
         }
-        console.log(req.user)
+        //console.log(req.user)
         return res.send(req.user);
     }
 

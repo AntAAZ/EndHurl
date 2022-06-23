@@ -19,6 +19,8 @@ import AvatarUploadRoute from './routes/AvatarUploadRoute'
 import SetBioRoute from './routes/SetBioRoute'
 import SetLocRoute from './routes/SetLocRoute'
 import AvatarDeleteRoute from './routes/AvatarDeleteRoute'
+import BorderUploadRoute from './routes/BorderUploadRoute'
+import BorderGetRoute from './routes/BorderGetRoute'
 
 class expressApp
 {
@@ -66,7 +68,9 @@ class expressApp
             AvatarUploadRoute,
             AvatarDeleteRoute,
             SetBioRoute,
-            SetLocRoute
+            SetLocRoute,
+            BorderUploadRoute,
+            BorderGetRoute
         ]);
         this.express.use('/', router);
         this.express.use('/public/', express.static(path.join(__dirname, '../public')))

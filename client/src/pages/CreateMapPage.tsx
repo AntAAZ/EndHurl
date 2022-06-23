@@ -3,11 +3,12 @@ import React, { useState, useContext, useRef, useEffect, useCallback } from 'rea
 import { userDataContext } from '../contexts/UserDataContext'
 import { Button, Modal, Form } from 'react-bootstrap'
 import Draggable from 'react-draggable'
-import MapsPage from './MapsPage';
+import MapsPage from './MapsPage'
+import axios from 'axios'
 
 export default function CreateMapPage() {
 
-  const mapName = "myMap"
+  const mapName = useRef("myMap")
   const mapUrl = "../world2.png"
   const mapOffsetX: any = useRef()
   const mapOffsetY: any = useRef()
@@ -30,7 +31,6 @@ export default function CreateMapPage() {
     color: 'white',
     display: 'flex',
     fontSize: 20,
-    fontStyle: 'italic',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'black',
@@ -41,17 +41,21 @@ export default function CreateMapPage() {
   const mousePos: any = useRef([0, 0])
   const isDragging: any = useRef<boolean>(false)
   const mapRef: any = useRef<HTMLImageElement>(new Image())
-  const intervalCanvasRef: any = useRef(null)
   //debugging coordds for rendering, TB removed
-  const [coords, setCoords] = useState<any>([])
+  const [coords, setCoords] = useState<number[]>([])
   const [mouseCoords, setMouseCoords] = useState<any>([0, 0])
   //
-  const borders: any = useRef([])
-  const drawBorderHelperPos: any = useRef([])
+  const borders: any = useRef<number[]>([])
+  const drawBorderHelperPos: any = useRef<number[]>([])
   const isDrawingBorder: any = useRef<boolean>(false)
   const [mapLoading, setMapLoading] = useState<boolean>(false)
   const [saveBordersModalShow, setSaveBordersModalShow] = useState<boolean>(false)
+  const [bordersModalError, setBordersModalError] = useState(null)
+  const [isBorderSaveSuccess, setIsBorderSaveSuccess] = useState<boolean>(false)
+  const [loadingBorderSave, setLoadingBorderSave] = useState<boolean>(false)
   //
+  const existingBorders = useRef<any[]>([])
+  const [loadingExistingBorders, setLoadingExistingBorders] = useState<boolean>(false)
   const [countryName, setCountryName] = useState<string>("")
   const [loading, error, user] = useContext(userDataContext)
 
@@ -60,25 +64,52 @@ export default function CreateMapPage() {
   }
 
   const handleBordersSave = () => {
-    /// TO-DO (input validations)
-    /// TO-DO - If a map with its current given name doesn't exist, then create it inside the database,
-    ///         make AXIOS call to save the map on the server and then save it on the db
-    /// TO-DO - Make AXIOS call to save the country border positions on the server and then in the db,
-    ///         also need .get and .post routes on the server and further db interactions
-    /// TO-DO - Add borders to the list of constantly drawn ones, add loading borders functionality
+    setLoadingBorderSave(true)
+
+    let country = countryName
+    axios.post(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/borderUpload`,
+      {
+        points: [...borders.current, borders.current[0]],
+        countryName,
+        mapName: mapName.current
+      }, { withCredentials: true })
+      .then(res => {
+          
+        borders.current = []
+        drawBorderHelperPos.current = []
+        isDrawingBorder.current = false
+        setIsBorderSaveSuccess(true)
+        loadExistingBorders()
+      })
+      .catch(err => setBordersModalError(err.response.data.message))
+      .finally(() => setLoadingBorderSave(false))
+  }
+
+  const loadExistingBorders = () => {
+    setLoadingExistingBorders(true)
+    axios.get(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/bordersGet`, {
+      params: {
+        mapName: mapName.current
+      },
+      withCredentials: true
+    })
+    .then(res => {
+      existingBorders.current = res.data
+      drawMap(mapOffsetX.current, mapOffsetY.current)
+    })
+    .finally(() => setLoadingExistingBorders(false))
   }
 
   useEffect(() => {
     mapRef.current.src = mapUrl
     addEventListeners()
+    loadExistingBorders()
     requestIdRef.current = requestAnimationFrame(tick);
     return () => {
       unmountEventListeners()
       cancelAnimationFrame(requestIdRef.current)
     };
   }, [])
-
-
 
   const addEventListeners = () => {
     mapRef.current.addEventListener('load', mapImageLoad)
@@ -96,7 +127,6 @@ export default function CreateMapPage() {
     window.removeEventListener('mouseup', mouseUp)
     window.removeEventListener('mousemove', mouseMove)
     window.removeEventListener('wheel', mouseWheel)
-    if (intervalCanvasRef.current != null) clearInterval(intervalCanvasRef.current)
   }
 
   const drawBorderStartPoint = (ctx: any, color: any) => {
@@ -160,8 +190,7 @@ export default function CreateMapPage() {
 
     setMapLoading(true)
     updateMapOffset(mapRef.current.width / 2, 0)
-    intervalCanvasRef.current =
-      setInterval(() => drawMap(mapRef.current.width / 2, 0))
+    drawMap(mapRef.current.width / 2, 0)
   }
 
   const mouseDown = (e: any) => {
@@ -215,6 +244,9 @@ export default function CreateMapPage() {
       ctx.closePath()
 
       unmountEventListeners()
+      setBordersModalError(null)
+      setIsBorderSaveSuccess(false)
+      setCountryName('')
       setSaveBordersModalShow(true)
       return
     }
@@ -249,7 +281,7 @@ export default function CreateMapPage() {
   }
 
   const mouseWheel = (e: any) => {
-    e.preventDefault();
+    e.preventDefault()
     e.stopPropagation()
     if (isDrawingBorder.current) return
     let scaleProperties = mapScaleProperties.current
@@ -291,11 +323,7 @@ export default function CreateMapPage() {
   }
 
   const drawMap: any = (offsetX: any, offsetY: any) => {
-    if (canvasRef.current == null || mapUrl == null) return
-    if (intervalCanvasRef.current != null) {
-      clearInterval(intervalCanvasRef.current)
-      intervalCanvasRef.current = 0
-    }
+    if (!canvasRef.current || mapUrl == null) return
 
     canvasRef.current.width = window.innerWidth
     canvasRef.current.height = window.innerHeight
@@ -331,6 +359,40 @@ export default function CreateMapPage() {
         -offsetX * mapScale.current, canvasRef.current.height * mapScale.current,
         0, 0, -offsetX, canvasRef.current.height)
     }
+
+    if (existingBorders.current.length == 0) return
+
+    let coordX = (offsetX * mapScale.current) % mapRef.current.width
+    coordX < 0 && (coordX += mapRef.current.width)
+    ctx.beginPath();
+    ctx.strokeStyle = drawBorderProperties.current.borderShapeStrokeColor
+    ctx.fillStyle = drawBorderProperties.current.borderShapeFillColor
+    ctx.lineWidth = mapScaleProperties.current.max - mapScale.current
+    ctx.moveTo((existingBorders.current[0].pointX - coordX) / mapScale.current,
+      (existingBorders.current[0].pointY - offsetY * mapScale.current) / mapScale.current)
+
+    for (let i = 1; i < existingBorders.current.length; i++) {
+      if (existingBorders.current[i].countryName != existingBorders.current[i - 1].countryName) {
+        ctx.stroke()
+        ctx.fill()
+        ctx.closePath()
+        
+        ctx.beginPath()
+        ctx.moveTo((existingBorders.current[i].pointX - coordX) / mapScale.current,
+          (existingBorders.current[i].pointY - offsetY * mapScale.current) / mapScale.current)
+        continue
+      }
+      if (existingBorders.current[i].selection != existingBorders.current[i - 1].selection) {
+        ctx.moveTo((existingBorders.current[i].pointX - coordX) / mapScale.current,
+          (existingBorders.current[i].pointY - offsetY * mapScale.current) / mapScale.current)
+        continue
+      }
+      ctx.lineTo((existingBorders.current[i].pointX - coordX) / mapScale.current,
+        (existingBorders.current[i].pointY - offsetY * mapScale.current) / mapScale.current)
+      ctx.stroke()
+    }
+    ctx.fill()
+    ctx.closePath()
     return
   }
 
@@ -343,7 +405,6 @@ export default function CreateMapPage() {
   if (error) return <MapsPage />
 
   return (
-
     <div className="createMapPage">
       <p style={{ color: 'white', position: 'absolute', fontSize: '24px' }}>
         coords({`${coords[0]}, ${coords[1]}`}) --
@@ -353,7 +414,6 @@ export default function CreateMapPage() {
         zoom({`${mapScale.current}`})
       </p>
       <canvas ref={canvasRef} id='canvas-id' />
-
       <Modal
         show={saveBordersModalShow}
         onHide={handleBordersModalOnClose}
@@ -361,30 +421,74 @@ export default function CreateMapPage() {
         keyboard={false}
       >
         <Draggable>
+          {isBorderSaveSuccess || bordersModalError ?
+            <div>
+              <Modal.Header style={modalProperties.current}>
+                <Modal.Title>
+                  {bordersModalError ? bordersModalError : 'Succesfully saved borders!'}
+                </Modal.Title>
+                <Button className={'btn-close btn-close-white'}
+                  style={{ marginLeft: '15px', marginTop: '10px', padding: 0 }}
+                  onClick={handleBordersModalOnClose}
+                ></Button>
+              </Modal.Header>
+            </div>
+            :
+            <div>
+              <Modal.Header style={modalProperties.current}>
+                <Modal.Title>Save currently connected borders</Modal.Title>
+                <Button className={'btn-close btn-close-white'}
+                  style={{ marginLeft: '15px', marginTop: '10px', padding: 0 }}
+                  onClick={handleBordersModalOnClose}></Button>
+              </Modal.Header>
+              <Modal.Body style={modalProperties.current}>
+                <Form.Group >
+                  <Form.Label>
+                    Enter a country name [alphabetic,&nbsp;
+                    {formProperties.current.countryNameCharsLimit[0]} -&nbsp;
+                    {formProperties.current.countryNameCharsLimit[1]} chars]
+                  </Form.Label>
+                  <Form.Control type="text" onChange={handleCountryNameChange}
+                    value={countryName} placeholder="" />
+                </Form.Group>
+              </Modal.Body>
+              <Modal.Footer style={modalProperties.current}>
+                <Button variant="primary"
+                  style={{ marginRight: '15px' }}
+                  onClick={handleBordersSave}>Save borders</Button>
+                <Button variant="secondary" onClick={handleBordersModalOnClose}>Cancel link</Button>
+              </Modal.Footer>
+            </div>
+          }
+        </Draggable>
+      </Modal>
+
+      <Modal
+        show={loadingBorderSave}
+        onHide={handleBordersModalOnClose}
+        backdrop="static"
+        keyboard={false}
+      >
+        <Draggable>
           <div>
             <Modal.Header style={modalProperties.current}>
-              <Modal.Title>Save currently connected borders</Modal.Title>
-              <Button className={'btn-close btn-close-white'}
-                style={{ marginLeft: '15px', marginTop: '10px', padding: 0 }}
-                onClick={handleBordersModalOnClose}></Button>
+              <Modal.Title>Saving borders, please wait..</Modal.Title>
             </Modal.Header>
-            <Modal.Body style={modalProperties.current}>
-              <Form.Group >
-                <Form.Label>
-                  Enter a country name [alphabetic,&nbsp;
-                  {formProperties.current.countryNameCharsLimit[0]} -&nbsp;
-                  {formProperties.current.countryNameCharsLimit[1]} chars]
-                </Form.Label>
-                <Form.Control type="text" onChange={handleCountryNameChange}
-                  value={countryName} placeholder="" />
-              </Form.Group>
-            </Modal.Body>
-            <Modal.Footer style={modalProperties.current}>
-              <Button variant="primary"
-                style={{ marginRight: '15px' }}
-                onClick={handleBordersSave}>Save borders</Button>
-              <Button variant="secondary" onClick={handleBordersModalOnClose}>Cancel link</Button>
-            </Modal.Footer>
+          </div>
+        </Draggable>
+      </Modal>
+
+      <Modal
+        show={loadingExistingBorders}
+        onHide={handleBordersModalOnClose}
+        backdrop="static"
+        keyboard={false}
+      >
+        <Draggable>
+          <div>
+            <Modal.Header style={modalProperties.current}>
+              <Modal.Title>Redrawing borders...</Modal.Title>
+            </Modal.Header>
           </div>
         </Draggable>
       </Modal>
