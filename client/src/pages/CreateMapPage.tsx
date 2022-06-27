@@ -30,7 +30,6 @@ export default function CreateMapPage() {
   const modalProperties: any = useRef({
     color: 'white',
     display: 'flex',
-    fontSize: 20,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'black',
@@ -55,6 +54,7 @@ export default function CreateMapPage() {
   const [loadingBorderSave, setLoadingBorderSave] = useState<boolean>(false)
   //
   const existingBorders = useRef<any[]>([])
+  const [bordersLoadingData, setBordersLoadingData] = useState<any[]>([])
   const [loadingExistingBorders, setLoadingExistingBorders] = useState<boolean>(false)
   const [countryName, setCountryName] = useState<string>("")
   const [loading, error, user] = useContext(userDataContext)
@@ -62,48 +62,130 @@ export default function CreateMapPage() {
   const handleCountryNameChange = (e: any) => {
     setCountryName(e.target.value)
   }
+  const getCountriesByName = async (cName?: any) => {
+    let params = (cName !== undefined) ? { name: cName, mapName: mapName.current } : { mapName: mapName.current }
+    return await axios.get(
+      `${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/countryGet`,
+      {
+        params,
+        withCredentials: true
+      }
+    )
+  }
 
-  const handleBordersSave = () => {
+  const handleBordersSave = (name?: any) => {
     setLoadingBorderSave(true)
-
-    let country = countryName
+    let cName = (name === undefined) ? countryName : name
     axios.post(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/borderUpload`,
       {
         points: [...borders.current, borders.current[0]],
-        countryName,
+        countryName: cName,
         mapName: mapName.current
       }, { withCredentials: true })
-      .then(res => {
-          
+      .then((res) => {
+
         borders.current = []
         drawBorderHelperPos.current = []
         isDrawingBorder.current = false
         setIsBorderSaveSuccess(true)
-        loadExistingBorders()
+        loadCountryExistingBorders(cName)
       })
       .catch(err => setBordersModalError(err.response.data.message))
       .finally(() => setLoadingBorderSave(false))
   }
 
-  const loadExistingBorders = () => {
-    setLoadingExistingBorders(true)
+  const loadNaturalEarthBorders = async () => {
+
+    drawBorderHelperPos.current = []
+    isDrawingBorder.current = false
+    drawMap(mapOffsetX.current, mapOffsetY.current)
+    await axios.get(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/getNaturalEarthData`, {
+      params: {},
+      withCredentials: true
+    }).then(async (res) => {
+      for (let k = 0; k < res.data.length; k++) {
+        borders.current = []
+        for (let i = 0; i < res.data[k].coords.length; i++) {
+          for (let j = 0; j < res.data[k].coords[i][0].length; j++) {
+            let long = res.data[k].coords[i][0][j][0]
+            let lat = res.data[k].coords[i][0][j][1]
+            let x = mapRef.current.width * ((long + 180) / 360)
+            let y = mapRef.current.height * ((lat - 90) / (-180))
+
+            borders.current.push([x, y])
+          }
+          borders.current.pop()
+          await handleBordersSave(res.data[k].NAME)
+        }
+      }
+    })
+
+  }
+
+  const loadCountryExistingBorders = async (cName: any, cLength?: any) => {
+
     axios.get(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/bordersGet`, {
       params: {
-        mapName: mapName.current
+        mapName: mapName.current,
+        countryName: cName
       },
       withCredentials: true
     })
     .then(res => {
-      existingBorders.current = res.data
+      let min = [res.data[0].pointX, res.data[0].pointY]
+      let max = [res.data[0].pointX, res.data[0].pointY]
+      for(let i = 1; i < res.data.length; i++)
+      {
+        if(res.data[i].pointX < min[0])
+        {
+          min[0] = res.data[i].pointX
+        }
+        if(res.data[i].pointY < min[1])
+        {
+          min[1] = res.data[i].pointY
+        }
+        if(res.data[i].pointX > max[0])
+        {
+          max[0] = res.data[i].pointX
+        }
+        if(res.data[i].pointY > max[1])
+        {
+          max[1] = res.data[i].pointY
+        }
+      }
+      res.data.min = min
+      res.data.max = max
+      existingBorders.current.push(res.data)
+      if(cLength !== undefined)
+      {
+        let percent = Math.round((existingBorders.current.length - 1) * 100 / cLength)
+        setBordersLoadingData([percent, cName])
+        if(percent >= 100)
+        {
+          setLoadingExistingBorders(false)
+          addEventListeners()
+        }
+      }
       drawMap(mapOffsetX.current, mapOffsetY.current)
     })
-    .finally(() => setLoadingExistingBorders(false))
+  }
+
+  const loadAllBorders = async () => {
+    let countries = await getCountriesByName()
+    setLoadingExistingBorders(true)
+    unmountEventListeners()
+    for (let i = 0; i < countries.data.length; i++) {
+      loadCountryExistingBorders(countries.data[i].name, countries.data.length)
+    }
+    //setLoadingExistingBorders(false)
+    //console.log(existingBorders.current)
   }
 
   useEffect(() => {
     mapRef.current.src = mapUrl
     addEventListeners()
-    loadExistingBorders()
+    loadAllBorders()
+    //loadNaturalEarthBorders()
     requestIdRef.current = requestAnimationFrame(tick);
     return () => {
       unmountEventListeners()
@@ -142,19 +224,18 @@ export default function CreateMapPage() {
     let ctx: any = canvasRef.current.getContext('2d')
 
     drawMap(mapOffsetX.current, mapOffsetY.current)
-    if (drawBorderHelperPos.current.length == 0) return
+    if (!drawBorderHelperPos.current.length) return
 
     drawBorderStartPoint(ctx, drawBorderProperties.current.startPointColor)
 
-    ctx.beginPath()
     ctx.strokeStyle = drawBorderProperties.current.borderLineColor
     ctx.lineWidth = mapScaleProperties.current.max - mapScale.current
+    ctx.beginPath()
     for (let i = 1; i < drawBorderHelperPos.current.length; i++) {
       ctx.moveTo(drawBorderHelperPos.current[i - 1][0], drawBorderHelperPos.current[i - 1][1])
       ctx.lineTo(drawBorderHelperPos.current[i][0], drawBorderHelperPos.current[i][1])
-      ctx.stroke()
     }
-    ctx.closePath()
+    ctx.stroke()
   }
 
   const handleBordersModalOnClose = () => {
@@ -175,7 +256,7 @@ export default function CreateMapPage() {
       return
     }
     if (e.code == 'KeyZ') {
-      if (!isDrawingBorder.current || borders.current.length == 0) {
+      if (!isDrawingBorder.current || !borders.current.length) {
         return
       }
       borders.current.pop()
@@ -218,9 +299,8 @@ export default function CreateMapPage() {
       (mousePos.current[1] - rect.top) * mapScale.current + mapOffsetY.current * mapScale.current
     ]
     let ctx: any = canvasRef.current.getContext('2d')
-    ctx.lineWidth = mapScaleProperties.current.max - mapScale.current
 
-    if (borders.current.length == 0) {
+    if (!borders.current.length) {
       drawBorderHelperPos.current = [[mousePos.current[0] - rect.left, mousePos.current[1] - rect.top]]
 
       drawBorderStartPoint(ctx, drawBorderProperties.current.startPointColor)
@@ -240,6 +320,7 @@ export default function CreateMapPage() {
         drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][1]
       )
       ctx.lineTo(drawBorderHelperPos.current[0][0], drawBorderHelperPos.current[0][1])
+      ctx.lineWidth = (mapScaleProperties.current.max - mapScale.current)/2
       ctx.stroke()
       ctx.closePath()
 
@@ -258,6 +339,7 @@ export default function CreateMapPage() {
       drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][1]
     )
     ctx.lineTo(mousePos.current[0] - rect.left, mousePos.current[1] - rect.top)
+    ctx.lineWidth = (mapScaleProperties.current.max - mapScale.current)/2
     ctx.stroke()
     ctx.closePath()
     borders.current.push(trueMousePosition)
@@ -359,40 +441,38 @@ export default function CreateMapPage() {
         -offsetX * mapScale.current, canvasRef.current.height * mapScale.current,
         0, 0, -offsetX, canvasRef.current.height)
     }
-
     if (existingBorders.current.length == 0) return
 
     let coordX = (offsetX * mapScale.current) % mapRef.current.width
     coordX < 0 && (coordX += mapRef.current.width)
-    ctx.beginPath();
     ctx.strokeStyle = drawBorderProperties.current.borderShapeStrokeColor
     ctx.fillStyle = drawBorderProperties.current.borderShapeFillColor
-    ctx.lineWidth = mapScaleProperties.current.max - mapScale.current
-    ctx.moveTo((existingBorders.current[0].pointX - coordX) / mapScale.current,
-      (existingBorders.current[0].pointY - offsetY * mapScale.current) / mapScale.current)
-
-    for (let i = 1; i < existingBorders.current.length; i++) {
-      if (existingBorders.current[i].countryName != existingBorders.current[i - 1].countryName) {
-        ctx.stroke()
-        ctx.fill()
-        ctx.closePath()
-        
-        ctx.beginPath()
-        ctx.moveTo((existingBorders.current[i].pointX - coordX) / mapScale.current,
-          (existingBorders.current[i].pointY - offsetY * mapScale.current) / mapScale.current)
+    ctx.lineWidth = (mapScaleProperties.current.max - mapScale.current)/2
+    ctx.beginPath()
+    for (let i = 0; i < existingBorders.current.length; i++) {
+      ctx.moveTo((existingBorders.current[i][0].pointX - coordX) / mapScale.current,
+        (existingBorders.current[i][0].pointY - offsetY * mapScale.current) / mapScale.current)
+      if ( !(existingBorders.current[i].max[0] > coordX  && 
+          existingBorders.current[i].min[0] < coordX + canvasRef.current.width*mapScale.current &&
+          existingBorders.current[i].max[1] > offsetY*mapScale.current &&
+          existingBorders.current[i].min[1] < offsetY*mapScale.current + canvasRef.current.height*mapScale.current))
+      {
         continue
       }
-      if (existingBorders.current[i].selection != existingBorders.current[i - 1].selection) {
-        ctx.moveTo((existingBorders.current[i].pointX - coordX) / mapScale.current,
-          (existingBorders.current[i].pointY - offsetY * mapScale.current) / mapScale.current)
-        continue
+      for (let j = 1; j < existingBorders.current[i].length; j++) {
+        if (existingBorders.current[i][j].countryName != existingBorders.current[i][j - 1].countryName ||
+          existingBorders.current[i][j].selection != existingBorders.current[i][j - 1].selection) {
+            
+          ctx.moveTo((existingBorders.current[i][j].pointX - coordX) / mapScale.current,
+          (existingBorders.current[i][j].pointY - offsetY * mapScale.current) / mapScale.current)
+          continue
+        }
+        ctx.lineTo((existingBorders.current[i][j].pointX - coordX) / mapScale.current,
+          (existingBorders.current[i][j].pointY - offsetY * mapScale.current) / mapScale.current)
       }
-      ctx.lineTo((existingBorders.current[i].pointX - coordX) / mapScale.current,
-        (existingBorders.current[i].pointY - offsetY * mapScale.current) / mapScale.current)
-      ctx.stroke()
     }
+    ctx.stroke()
     ctx.fill()
-    ctx.closePath()
     return
   }
 
@@ -487,8 +567,12 @@ export default function CreateMapPage() {
         <Draggable>
           <div>
             <Modal.Header style={modalProperties.current}>
-              <Modal.Title>Redrawing borders...</Modal.Title>
+              <Modal.Title>Loading borders - {bordersLoadingData[0]}%</Modal.Title>
             </Modal.Header>
+            
+            <Modal.Body style={modalProperties.current}>
+              <p style={{margin: 0}}>{bordersLoadingData[1]}</p>
+            </Modal.Body>
           </div>
         </Draggable>
       </Modal>

@@ -21,6 +21,9 @@ import SetLocRoute from './routes/SetLocRoute'
 import AvatarDeleteRoute from './routes/AvatarDeleteRoute'
 import BorderUploadRoute from './routes/BorderUploadRoute'
 import BorderGetRoute from './routes/BorderGetRoute'
+import NaturalEarthGetRoute from './routes/NaturalEarthGetRoute'
+import UuidGetRoute from './routes/UuidGetRoute'
+import CountryGetRoute from './routes/CountryGetRoute'
 
 class expressApp
 {
@@ -29,9 +32,10 @@ class expressApp
     {
         dotenv.config();
         this.express = express()
-            .use(express.json())
+            .use(express.json({limit: '50mb'}))
             .use(express.urlencoded({
-                extended: true
+                extended: true,
+                limit: '50mb'
             }))
             .use(cors({
                 origin: [
@@ -70,7 +74,10 @@ class expressApp
             SetBioRoute,
             SetLocRoute,
             BorderUploadRoute,
-            BorderGetRoute
+            BorderGetRoute,
+           // NaturalEarthGetRoute,
+            UuidGetRoute,
+            CountryGetRoute
         ]);
         this.express.use('/', router);
         this.express.use('/public/', express.static(path.join(__dirname, '../public')))

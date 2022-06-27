@@ -19,9 +19,9 @@ class BorderGetRoute {
             return
         } 
 
-        let { mapName } = req.query
-        
-        Border.find({ mapName }, async(err: Error, doc: any) => {
+        let { countryName, mapName } = req.query
+        Border.find({ countryName, mapName },(err: Error, doc: any) => {
+            //console.log(doc)
             if(err) 
             {
                 res.status(422).send({

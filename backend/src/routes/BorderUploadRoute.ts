@@ -2,7 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import Border from '../models/Border';
 import Country from '../models/Country';
-import {v4 as uuidv4} from 'uuid'
+import { v4 as uuidv4 } from 'uuid'
 class BorderUploadRoute {
 
     private router: Router = Router()
@@ -20,7 +20,7 @@ class BorderUploadRoute {
         } 
         
         const { points, countryName, mapName } = req.body
-        console.log(req.body)
+        //console.log(req.body)
         if(!mapName)
         {
             res.status(401).send({ message: `Your map name is missing` })
@@ -53,7 +53,7 @@ class BorderUploadRoute {
             return
         }
 
-        Country.findOne({ countryName }, async(err: Error, doc: any) => {
+        Country.findOne({ name: countryName, mapName }, async(err: Error, doc: any) => {
             if(err) 
             {
                 res.status(422).send({
@@ -64,13 +64,15 @@ class BorderUploadRoute {
             if(!doc) 
             {
                 //res.status(404).send({message: `A country with this name doesn't exist`})
-                await new Country({ name: countryName }).save()
+                await new Country({ name: countryName, mapName }).save()
             }
             let uuidVal = uuidv4()
             for(let i = 0; i < points.length; i++)
             {
                 let pointX = points[i][0], pointY = points[i][1]
-                await new Border({pointX, pointY, selection: uuidVal, countryName, mapName}).save()
+                await new Border({
+                    pointX, pointY, selection: uuidVal, countryName, mapName
+                }).save()
             }
             return res.send("success")
         })
