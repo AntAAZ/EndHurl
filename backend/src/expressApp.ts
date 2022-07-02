@@ -21,9 +21,13 @@ import SetLocRoute from './routes/SetLocRoute'
 import AvatarDeleteRoute from './routes/AvatarDeleteRoute'
 import BorderUploadRoute from './routes/BorderUploadRoute'
 import BorderGetRoute from './routes/BorderGetRoute'
-import NaturalEarthGetRoute from './routes/NaturalEarthGetRoute'
-import UuidGetRoute from './routes/UuidGetRoute'
 import CountryGetRoute from './routes/CountryGetRoute'
+import WaterBorderGetRoute from './routes/WaterBorderGetRoute'
+import WaterBorderUploadRoute from './routes/WaterBorderUploadRoute'
+//import UuidGetRoute from './routes/UuidGetRoute'
+//import NaturalEarthGetRoute from './routes/NaturalEarthGetRoute'
+//import NaturalEarthGetWatersRoute from './routes/NaturalEarthGetWatersRoute'
+import RiverGetRoute from './routes/RiverGetRoute'
 
 class expressApp
 {
@@ -75,9 +79,13 @@ class expressApp
             SetLocRoute,
             BorderUploadRoute,
             BorderGetRoute,
-           // NaturalEarthGetRoute,
-            UuidGetRoute,
-            CountryGetRoute
+            //NaturalEarthGetRoute,
+            //UuidGetRoute,
+            CountryGetRoute,
+            RiverGetRoute,
+            WaterBorderGetRoute,
+            WaterBorderUploadRoute,
+            //NaturalEarthGetWatersRoute
         ]);
         this.express.use('/', router);
         this.express.use('/public/', express.static(path.join(__dirname, '../public')))
