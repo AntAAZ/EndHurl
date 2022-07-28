@@ -1,10 +1,7 @@
 import mongoose from 'mongoose'
 const WaterBorder/**: mongoose.SchemaDefinitionProperty<BorderInterface>*/ = new mongoose.Schema({
-    pointX : {
-        type: Number,
-    },
-    pointY : {
-        type: Number
+    point : {
+        type: Array,
     },
     selection: {
         type: String
@@ -17,5 +14,6 @@ const WaterBorder/**: mongoose.SchemaDefinitionProperty<BorderInterface>*/ = new
     }
 })
 
+WaterBorder.index({ mapName: 1 })
 export default mongoose.model("WaterBorder", WaterBorder);
 

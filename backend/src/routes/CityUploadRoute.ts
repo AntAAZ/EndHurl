@@ -1,14 +1,14 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
-import Border from '../models/Border';
+import City from '../models/City';
 import Country from '../models/Country';
-import { v4 as uuidv4 } from 'uuid'
-class BorderUploadRoute {
+
+class CityUploadRoute {
 
     private router: Router = Router()
 
     constructor() {
-        this.router.post('/borderUpload', this.handlePostReq)
+        this.router.post('/cityUpload', this.handlePostReq)
     }
 
     private async handlePostReq(req: any, res: Response, next: NextFunction) 
@@ -19,7 +19,7 @@ class BorderUploadRoute {
             return
         } 
         
-        const { points, countryName, mapName } = req.body
+        let { point, type, name, area, pop_max, countryName, mapName } = req.body
         //console.log(req.body)
         if(!mapName)
         {
@@ -47,12 +47,22 @@ class BorderUploadRoute {
                 ${process.env.COUNTRYNAME_MIN_CHARS}-${process.env.COUNTRYNAME_MAX_CHARS} symbols` })
             return
         }   
-        if(!points || !(points instanceof Array))
+        if(!point || !(point instanceof Array))
         {
             res.status(401).send({ message: `Your border points are missing` })
             return
         }
-
+        if(type == null)
+        {
+            res.status(401).send({ message: `Your city type is missing` })
+            return
+        }
+        if(!name)
+        {
+            res.status(401).send({ message: `Your city name is missing` })
+            return
+        }
+        
         Country.findOne({ name: countryName, mapName }, async(err: Error, doc: any) => {
             if(err) 
             {
@@ -63,18 +73,30 @@ class BorderUploadRoute {
             }
             if(!doc) 
             {
-                //res.status(404).send({message: `A country with this name doesn't exist`})
-                await new Country({ name: countryName, mapName }).save()
+                res.status(401).send({ message: `Your country doesn't exist in this map - ${countryName}` })
+                return
             }
-            let uuidVal = uuidv4()
-            for(let i = 0; i < points.length; i++)
-            {
-                await new Border({
-                    point: points[i], selection: uuidVal, countryName, mapName
+            City.findOne({ name, area, mapName }, async(err: Error, doc: any) => {
+                if(err) 
+                {
+                    res.status(422).send({
+                        message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
+                    })
+                    return
+                }
+                if(doc)
+                {
+                    res.status(401).send({ 
+                        message: `Your city with this name and area already exists` 
+                    })
+                    return
+                }
+                await new City({
+                    point, type, name, area, pop_max, countryName, mapName
                 }).save()
-            }
-            return res.send("success")
-        })
+                res.send("success")
+            }).lean()
+        }).lean()
     }
 
     public getRouter(): Router {
@@ -82,4 +104,4 @@ class BorderUploadRoute {
     }
 }
 
-export default new BorderUploadRoute().getRouter();
+export default new CityUploadRoute().getRouter();

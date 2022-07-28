@@ -21,8 +21,8 @@ class NaturalEarthGetWatersRoute {
         for(let i = 0; i < borderWaters.features.length; i++)
         {
             borders.push({
-                'NAME': features[i].properties.name, 
-                'coords': features[i].geometry.coordinates 
+                NAME: features[i].properties.name, 
+                coords: features[i].geometry.coordinates 
             })
         }
         res.send(borders)

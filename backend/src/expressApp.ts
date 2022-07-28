@@ -25,10 +25,12 @@ import CountryGetRoute from './routes/CountryGetRoute'
 import WaterBorderGetRoute from './routes/WaterBorderGetRoute'
 import WaterBorderUploadRoute from './routes/WaterBorderUploadRoute'
 //import UuidGetRoute from './routes/UuidGetRoute'
-//import NaturalEarthGetRoute from './routes/NaturalEarthGetRoute'
-//import NaturalEarthGetWatersRoute from './routes/NaturalEarthGetWatersRoute'
+import NaturalEarthGetRoute from './routes/NaturalEarthGetRoute'
+import NaturalEarthGetWatersRoute from './routes/NaturalEarthGetWatersRoute'
 import RiverGetRoute from './routes/RiverGetRoute'
-
+import NaturalEarthGetCityRoute from './routes/NaturalEarthGetCityRoute'
+import CityGetRoute from './routes/CityGetRoute'
+import CityUploadRoute from './routes/CityUploadRoute'
 class expressApp
 {
     private express: express.Application;
@@ -53,7 +55,8 @@ class expressApp
                 resave: true,
                 saveUninitialized: true,
                 store: MongoStore.create({
-                    mongoUrl: `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.yymov.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`
+                    //mongoUrl: `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.yymov.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`
+                    mongoUrl: `mongodb://localhost:27017/${process.env.DB_NAME}?retryWrites=true&w=majority`
                 })
             }))
             .use(cookieParser())
@@ -79,13 +82,15 @@ class expressApp
             SetLocRoute,
             BorderUploadRoute,
             BorderGetRoute,
-            //NaturalEarthGetRoute,
-            //UuidGetRoute,
+            NaturalEarthGetRoute,
             CountryGetRoute,
             RiverGetRoute,
             WaterBorderGetRoute,
             WaterBorderUploadRoute,
-            //NaturalEarthGetWatersRoute
+            NaturalEarthGetCityRoute,
+            CityGetRoute,
+            CityUploadRoute,
+            NaturalEarthGetWatersRoute
         ]);
         this.express.use('/', router);
         this.express.use('/public/', express.static(path.join(__dirname, '../public')))

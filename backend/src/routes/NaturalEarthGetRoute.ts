@@ -1,7 +1,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 let borderCountries = require('./borderCountries.json')
-let splitCountries = require('./splitBorders.json')
+let splitCountries = require('./splitBordersV2.json')
 class NaturalEarthGetRoute {
 
     private router: Router = Router();
@@ -36,16 +36,16 @@ class NaturalEarthGetRoute {
                 continue
             }
             borders.push({
-                'NAME': features[i].properties.SOVEREIGNT,
-                'coords': features[i].geometry.coordinates
+                NAME: features[i].properties.SOVEREIGNT,
+                coords: features[i].geometry.coordinates
             })
         }
         features = splitCountries.features
         for(let i = 0; i < features.length; i++)
         {
             borders.push({
-                'NAME': features[i].properties.layer,
-                'coords': features[i].geometry.coordinates
+                NAME: features[i].properties.layer,
+                coords: features[i].geometry.coordinates
             })
         }
         res.send(borders)

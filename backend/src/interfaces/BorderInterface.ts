@@ -1,7 +1,6 @@
 export interface BorderInterface 
 {
-    pointX: number
-    pointY: number
+    point: []
     selection: string
     countryName: string
     mapName: string

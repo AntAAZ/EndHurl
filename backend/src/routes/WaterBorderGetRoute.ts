@@ -1,7 +1,6 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import WaterBorder from '../models/WaterBorder';
-import Country from '../models/Country';
 
 class WaterBorderGetRoute {
 
@@ -19,8 +18,11 @@ class WaterBorderGetRoute {
             return
         } 
 
-        let { name, mapName } = req.query
-        WaterBorder.find({name, mapName }, (err: Error, doc: any) => {
+        let { mapName } = req.query
+        WaterBorder.find(
+            { mapName }, 
+            {'point': 1, 'selection': 1, 'name': 1, _id: 0 }, 
+            (err: Error, doc: any) => {
             //console.log(doc)
             if(err) 
             {
@@ -29,12 +31,13 @@ class WaterBorderGetRoute {
                 })
                 return
             }
-            if(!doc) 
+            if(!doc)
             {
+                res.send([])
                 return
             }
             res.send(doc)
-        })
+        }).lean()
         return
     }
 

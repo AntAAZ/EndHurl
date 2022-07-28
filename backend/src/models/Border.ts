@@ -1,10 +1,7 @@
 import mongoose from 'mongoose'
 const border/**: mongoose.SchemaDefinitionProperty<BorderInterface>*/ = new mongoose.Schema({
-    pointX : {
-        type: Number,
-    },
-    pointY : {
-        type: Number
+    point : {
+        type: Array,
     },
     selection: {
         type: String
@@ -16,6 +13,6 @@ const border/**: mongoose.SchemaDefinitionProperty<BorderInterface>*/ = new mong
         type: String
     }
 })
-
+border.index({ mapName: 1 })
 export default mongoose.model("Border", border);
 

@@ -1,7 +1,7 @@
 export interface WaterBorderInterface 
 {
-    pointX: number
-    pointY: number
+    point: []
     selection: string
+    name: string
     mapName: string
 }

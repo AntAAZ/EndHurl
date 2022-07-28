@@ -1,9 +1,9 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import WaterBorder from '../models/WaterBorder';
-import Country from '../models/Country';
 import River from '../models/River';
 import { v4 as uuidv4 } from 'uuid'
+
 class WaterBorderUploadRoute {
 
     private router: Router = Router()
@@ -38,7 +38,7 @@ class WaterBorderUploadRoute {
         }
         if(!name)
         {
-            res.status(401).send({ message: `Your lake name is missing` })
+            res.status(401).send({ message: `Your selection name is missing` })
             return
         }
         
@@ -63,13 +63,12 @@ class WaterBorderUploadRoute {
             let uuidVal = uuidv4()
             for(let i = 0; i < points.length; i++)
             {
-                let pointX = points[i][0], pointY = points[i][1]
                 await new WaterBorder({
-                    pointX, pointY, selection: uuidVal, name, mapName
+                    point: points[i], selection: uuidVal, name, mapName
                 }).save()
             }
             return res.send("success")
-        })
+        }).lean()
         
     }
 

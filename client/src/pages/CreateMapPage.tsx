@@ -1,29 +1,32 @@
-
 import React, { useState, useContext, useRef, useEffect, useCallback } from 'react';
 import { userDataContext } from '../contexts/UserDataContext'
 import { Button, Modal, Form } from 'react-bootstrap'
 import Draggable from 'react-draggable'
 import MapsPage from './MapsPage'
 import axios from 'axios'
+import { City, River } from '../types/types'
+import { addCityToMap, getCitiesByMap, getNECities } from '../api/citiesAPI'
+import { addWaterToMap, getWatersByMap, getNEWaters } from '../api/riversAPI'
+import { addCountryToMap, getCountriesByMap, getNECountries } from '../api/countriesAPI'
 
 export default function CreateMapPage() {
 
   const mapName = useRef("myMap")
-  const mapUrl = "../world7.png"
+  const mapUrl = "../world7w.png"
   const mapOffsetX: any = useRef()
   const mapOffsetY: any = useRef()
 
   const mapScale: any = useRef(1)
   const mapScaleProperties: any = useRef({
-    step: 1.1, min: 0.5, max: 6
+    step: 1.1, min: 0.01, max: 6
   })
   const drawBorderProperties: any = useRef({
     startPointColor: 'yellow',
     borderLineColor: 'red',
-    connectingLineColor:'yellow',
+    connectingLineColor: 'yellow',
     borderShapeStrokeColor: 'gray',
     waterBorderShapeStrokeColor: '#5a8190',
-    waterBorderShapeFillColor: 'red',
+    waterBorderShapeFillColor: 'cyan',
     borderShapeFillColor: 'rgba(251, 192, 147, 0.3)'
 
   })
@@ -48,6 +51,7 @@ export default function CreateMapPage() {
   const [mouseCoords, setMouseCoords] = useState<any>([0, 0])
   //
   const borders: any = useRef<number[]>([])
+  const borderErrorRef = useRef<boolean>(false)
   const drawBorderHelperPos: any = useRef<number[]>([])
   const isDrawingBorder: any = useRef<boolean>(false)
   const [mapLoading, setMapLoading] = useState<boolean>(false)
@@ -60,10 +64,10 @@ export default function CreateMapPage() {
   const selectedCountry = useRef<any>(false)
   const existingBorders = useRef<any[]>([])
   const existingRiverBorders = useRef<any[]>([])
+  const existingCities = useRef<any[]>([])
   const existingBordersPathes = useRef<any[]>([])
   const existingRiversPathes = useRef<any[]>([])
-  const [bordersLoadingData, setBordersLoadingData] = useState<any[]>([0, ''])
-  const [riversLoadingData, setRiversLoadingData] = useState<any[]>([0, ''])
+  const existingCitiesPathes = useRef<any[]>([])
   const [loadingExistingBorders, setLoadingExistingBorders] = useState<boolean>(false)
   const [loadingExistingRivers, setLoadingExistingRivers] = useState<boolean>(false)
   const [formName, setFormName] = useState<string>("")
@@ -73,225 +77,166 @@ export default function CreateMapPage() {
   const handleFormNameChange = (e: any) => { setFormName(e.target.value) }
   const handleSelectChange = (e: any) => { setFormSelectName(e.target.value) }
 
-  const getCountriesByName = async (cName?: any) => {
-    let params = (cName !== undefined) ? { name: cName, mapName: mapName.current } : { mapName: mapName.current }
-    return axios.get(
-      `${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/countryGet`,
-      {
-        params,
-        withCredentials: true
-      }
-    )
-  }
-  const getRiversByName = async(rName?: any) => {
-    let params = (rName !== undefined) ? { name: rName, mapName: mapName.current } : { mapName: mapName.current }
-    return axios.get(
-      `${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/riversGet`,
-      {
-        params,
-        withCredentials: true
-      }
-    )
-  }
-
-  const handleBordersSave = (parameterName?: any) => {
-    setLoadingBorderSave(true)
-    let chosenName = (parameterName === undefined) ? formName : parameterName
-    axios.post(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/borderUpload`,
-      {
-        points: [...borders.current, borders.current[0]],
-        countryName: chosenName,
-        mapName: mapName.current
-      }, { withCredentials: true })
-      .then(() => {
-
-        borders.current = []
-        drawBorderHelperPos.current = []
-        isDrawingBorder.current = false
-        setIsBorderSaveSuccess(true)
-        loadCountryExistingBorders(chosenName)
+  const handleBordersSave = async () => {
+    setSaveBordersModalShow(true)
+    if (formSelectName === 'country') {
+      await addCountryToMap({
+        countryName: formName,
+        points: [...borders.current, borders.current[0]]
+      }, mapName.current, (err: any) => {
+        borderErrorRef.current = true
+        setBordersModalError(err.response.data.message)
       })
-      .catch(err => setBordersModalError(err.response.data.message))
-      .finally(() => setLoadingBorderSave(false))
-  }
-  const handleRiversSave = (parameterName?: any) => {
-    let chosenName = (parameterName === undefined) ? formName : parameterName
-    axios.post(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/waterBorderUpload`,
-      {
-        points: borders.current,
-        name: chosenName,
-        mapName: mapName.current
-      }, { withCredentials: true })
-      .then(() => {
 
-        borders.current = []
-        drawBorderHelperPos.current = []
-        isDrawingBorder.current = false
-        loadRiverExistingBorders(chosenName)
+      if (borderErrorRef.current) {
+        borderErrorRef.current = !borderErrorRef.current
+        return
+      }
+
+      setIsBorderSaveSuccess(true)
+      setLoadingBorderSave(false)
+      for (let i = 0; i < borders.current.length; i++) {
+        existingBorders.current.push({
+          point: borders.current[i],
+          selection: Date.now().toString(),
+          countryName: formName,
+          mapName: mapName.current,
+        })
+      }
+
+      if (borders.current.length) {
+        existingBorders.current.push({
+          point: borders.current[0],
+          selection: Date.now().toString(),
+          countryName: formName,
+          mapName: mapName.current,
+        })
+      }
+      borders.current = []
+      isDrawingBorder.current = false
+      drawBorderHelperPos.current = []
+      handleBordersModalOnClose()
+      return
+    }
+    await addWaterToMap({
+      name: formName,
+      points: borders.current
+    }, mapName.current, (err: any) => {
+      borderErrorRef.current = true
+      setBordersModalError(err.response.data.message)
+    })
+
+    if (borderErrorRef.current) {
+      borderErrorRef.current = !borderErrorRef.current
+      return
+    }
+
+    setIsBorderSaveSuccess(true)
+    setLoadingBorderSave(false)
+    for (let i = 0; i < borders.current.length; i++) {
+      existingRiverBorders.current.push({
+        point: borders.current[i],
+        selection: Date.now().toString(),
+        name: formName,
+        mapName: mapName.current,
       })
-      .catch(err => setBordersModalError(err.response.data.message))
+    }
+    borders.current = []
+    isDrawingBorder.current = false
+    drawBorderHelperPos.current = []
+    handleBordersModalOnClose()
   }
+
   const loadNaturalEarthBorders = async () => {
-
-    await axios.get(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/getNaturalEarthBorders`, {
-      params: {},
-      withCredentials: true
-    }).then(async (res) => {
-      for (let k = 0; k < res.data.length; k++) {
-        borders.current = []
-        for (let i = 0; i < res.data[k].coords.length; i++) {
-          for (let j = 0; j < res.data[k].coords[i][0].length; j++) {
-            let long = res.data[k].coords[i][0][j][0]
-            let lat = res.data[k].coords[i][0][j][1]
-            let x = mapRef.current.width * ((long + 180) / 360)
-            let y = mapRef.current.height * ((lat - 90) / (-180))
-
-            borders.current.push([x, y])
-          }
-          borders.current.pop()
-          await handleBordersSave(res.data[k].NAME)
-        }
-      }
+    let res = await getNECountries()
+    let countries = res.data
+    countries.forEach((country: any) => {
+      let neBorderPoints: number[][] = []
+      country.coords.map((points: number[][][]) => points[0]).forEach(async (points: number[][]) => {
+        points.forEach((point: number[]) => {
+          let x = mapRef.current.width * ((point[0] + 180) / 360)
+          x += (x / (mapRef.current.width / 2)) * 2.5
+          neBorderPoints.push([x, mapRef.current.height * ((point[1] - 90) / (-180))])
+        })
+        neBorderPoints.pop()
+        await addCountryToMap({
+          countryName: country.name,
+          points: neBorderPoints
+        }, mapName.current, (err: any) => setBordersModalError(err.response.data.message))
+      })
     })
   }
 
   const loadNaturalEarthWaters = async () => {
 
-    await axios.get(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/getNaturalEarthWaters`, {
-      params: {},
-      withCredentials: true
-    }).then(async (res) => {
-      for (let k = 0; k < res.data.length; k++) {
-        borders.current = []
-        for (let i = 0; i < res.data[k].coords.length; i++) {
-          for (let j = 0; j < res.data[k].coords[i].length; j++) {
-            let long = res.data[k].coords[i][j][0]
-            let lat = res.data[k].coords[i][j][1]
-            let x = mapRef.current.width * ((long + 180) / 360)
-            let y = mapRef.current.height * ((lat - 90) / (-180))
+    let res = await getNEWaters()
+    let rivers = res.data
+    rivers.forEach((river: River) => {
+      let neBorderPoints: number[][] = []
+      river.coords.forEach(async (points: number[][]) => {
+        points.forEach((point: number[]) => {
+          let x = mapRef.current.width * ((point[0] + 180) / 360)
+          x += (x / (mapRef.current.width / 2)) * 2.5
+          neBorderPoints.push([x, mapRef.current.height * ((point[1] - 90) / (-180))])
+        })
 
-            borders.current.push([x, y])
-          }
-          await handleRiversSave(res.data[k].NAME)
-        }
-      }
+        await addWaterToMap({
+          name: river.name,
+          points: neBorderPoints
+        }, mapName.current, (err: any) => setBordersModalError(err.response.data.message))
+      })
     })
   }
+  const loadNaturalEarthCities = async () => {
 
-  const loadCountryExistingBorders = async (cName: any, cLength?: any) => {
+    let res: any = await getNECities()
+    let cities: City[] = res.data
 
-    axios.get(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/bordersGet`, {
-      params: {
-        mapName: mapName.current,
-        countryName: cName
-      },
-      withCredentials: true
+    cities.forEach(async (city: City) => {
+
+      city.point = [
+        mapRef.current.width * ((city.point[0] + 180) / 360),
+        mapRef.current.height * ((city.point[1] - 90) / (-180))
+      ]
+
+      city.area == null && (city.area = city.countryName)
+      await addCityToMap(city, mapName.current)
     })
-      .then(res => {
-        unmountEventListeners()
-        let min = [res.data[0].pointX, res.data[0].pointY]
-        let max = [res.data[0].pointX, res.data[0].pointY]
-        for (let i = 1; i < res.data.length; i++) {
-          if (res.data[i].pointX < min[0]) {
-            min[0] = res.data[i].pointX
-          }
-          if (res.data[i].pointY < min[1]) {
-            min[1] = res.data[i].pointY
-          }
-          if (res.data[i].pointX > max[0]) {
-            max[0] = res.data[i].pointX
-          }
-          if (res.data[i].pointY > max[1]) {
-            max[1] = res.data[i].pointY
-          }
-        }
-        res.data.min = min
-        res.data.max = max
-        existingBorders.current.push(res.data)
-        if (cLength !== undefined) {
-          let percent = Math.round((existingBorders.current.length) * 100 / cLength)
-          setBordersLoadingData([percent, cName])
-          if (percent >= 100) {
-            setLoadingExistingBorders(false)
-            addEventListeners()
-          }
-        }
-        drawMap(mapOffsetX.current, mapOffsetY.current)
-      })
   }
-  const loadRiverExistingBorders = async (rName: any, cLength?: any) => {
-    axios.get(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/waterBordersGet`, {
-      params: {
-        mapName: mapName.current,
-        name: rName
-      },
-      withCredentials: true
-    })
-      .then(async (res) => {
-        unmountEventListeners()
-        let min = [res.data[0].pointX, res.data[0].pointY]
-        let max = [res.data[0].pointX, res.data[0].pointY]
-        for (let i = 1; i < res.data.length; i++) {
-          if (res.data[i].pointX < min[0]) {
-            min[0] = res.data[i].pointX
-          }
-          if (res.data[i].pointY < min[1]) {
-            min[1] = res.data[i].pointY
-          }
-          if (res.data[i].pointX > max[0]) {
-            max[0] = res.data[i].pointX
-          }
-          if (res.data[i].pointY > max[1]) {
-            max[1] = res.data[i].pointY
-          }
-        }
-        res.data.min = min
-        res.data.max = max
-        existingRiverBorders.current.push(res.data)
-        if (cLength !== undefined) {
-          let percent = Math.round((existingRiverBorders.current.length) * 100 / cLength)
-          setRiversLoadingData([percent, rName])
-          if (percent >= 100) {
-            setLoadingExistingRivers(false)
-            addEventListeners()
-          }
-        }
-        drawMap(mapOffsetX.current, mapOffsetY.current)
-      })
+  const loadCountryExistingBorders = async () => {
+    setLoadingExistingBorders(true)
+    const res = await getCountriesByMap(mapName.current)
+    existingBorders.current = res.data
+    setLoadingExistingBorders(false)
+    drawMap(mapOffsetX.current, mapOffsetY.current)
+  }
+  const loadRiverExistingBorders = async () => {
+    setLoadingExistingRivers(true)
+    const res = await getWatersByMap(mapName.current)
+    existingRiverBorders.current = res.data
+    setLoadingExistingRivers(false)
+    drawMap(mapOffsetX.current, mapOffsetY.current)
+  }
+  const loadCountryExistingCities = async () => {
+    const res = await getCitiesByMap(mapName.current)
+    existingCities.current = res.data
+    drawMap(mapOffsetX.current, mapOffsetY.current)
   }
 
   const loadAllBorders = async () => {
-    setLoadingExistingBorders(true)
-    setLoadingExistingRivers(true)
-    let countries = await getCountriesByName()
-    let rivers = await getRiversByName()
     unmountEventListeners()
-    if(!countries.data.length)
-    {
-      setLoadingExistingBorders(false)
-      setBordersLoadingData([100, ''])
-    }
-    if(!rivers.data.length)
-    {
-      setLoadingExistingRivers(false)
-      setRiversLoadingData([100, ''])
-    }
-    for (let i = 0; i < countries.data.length; i++) 
-    {
-      loadCountryExistingBorders(countries.data[i].name, countries.data.length)
-    }
-    for(let i = 0; i < rivers.data.length; i++)
-    {
-      loadRiverExistingBorders(rivers.data[i].name, rivers.data.length)
-    }
-    //setLoadingExistingBorders(false)
-    //console.log(existingBorders.current)
+    await Promise.all([
+      loadCountryExistingBorders(),
+      loadRiverExistingBorders(),
+      loadCountryExistingCities()
+    ]).then(() => addEventListeners())
   }
 
   useEffect(() => {
     mapRef.current.src = mapUrl
     mapRef.current.addEventListener('load', mapImageLoad)
     loadAllBorders()
+    //loadNaturalEarthCities()
     //loadNaturalEarthBorders()
     //loadNaturalEarthWaters()
     requestIdRef.current = requestAnimationFrame(tick);
@@ -337,15 +282,15 @@ export default function CreateMapPage() {
     drawBorderStartPoint(ctx, drawBorderProperties.current.startPointColor)
 
     ctx.strokeStyle = drawBorderProperties.current.borderLineColor
-    ctx.lineWidth = mapScaleProperties.current.max - mapScale.current
-    
+    ctx.lineWidth = (mapScaleProperties.current.max - mapScale.current) / 4
+
     let drawPath = new Path2D()
     drawPath.moveTo(drawBorderHelperPos.current[0][0], drawBorderHelperPos.current[0][1])
     for (let i = 1; i < drawBorderHelperPos.current.length; i++) {
       drawPath.lineTo(drawBorderHelperPos.current[i][0], drawBorderHelperPos.current[i][1])
     }
-    drawPath.closePath()
     ctx.stroke(drawPath)
+    drawPath.closePath()
   }
 
   const handleBordersModalOnClose = () => {
@@ -356,19 +301,19 @@ export default function CreateMapPage() {
 
   const keyUp = (e: any) => {
     // to turn the key combinations into a beautiful tool menu instead (TO:DoO)
-    if (e.code == 'KeyD') {
+    if (e.code === 'KeyD') {
       isDrawingBorder.current = !isDrawingBorder.current
       if (!isDrawingBorder.current) {
         drawMap(mapOffsetX.current, mapOffsetY.current)
         return
       }
       borders.current = []
+      drawBorderHelperPos.current = []
       return
     }
-    if (e.code == 'KeyZ') {
-      if ((!isDrawingBorder.current) || !borders.current.length) {
-        return
-      }
+    if (e.code === 'KeyZ') {
+      if ((!isDrawingBorder.current) || !borders.current.length) return
+      
       borders.current.pop()
       drawBorderHelperPos.current.pop()
       redrawMapWithCurrentBorders()
@@ -406,19 +351,17 @@ export default function CreateMapPage() {
     ]
     let ctx: any = canvasRef.current.getContext('2d')
 
-    if (!isDrawingBorder.current) 
-    {
+    if (!isDrawingBorder.current) {
 
-      for(let i = 0; i < existingRiversPathes.current.length; i++) {
-        
-        if(ctx.isPointInStroke(
-            existingRiversPathes.current[i].path,
-            mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
+      for (let i = 0; i < existingRiversPathes.current.length; i++) {
+
+        if (ctx.isPointInStroke(
+          existingRiversPathes.current[i].path,
+          mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
         )) {
-          console.log(`Clicked on ${existingRiversPathes.current[i].name} river`)
+          //console.log(`Clicked on ${existingRiversPathes.current[i].name} river`)
           selectedCountry.current = false
-          if(selectedRiver.current === existingRiversPathes.current[i].name)
-          {
+          if (selectedRiver.current === existingRiversPathes.current[i].name) {
             selectedRiver.current = false
           } else {
             selectedRiver.current = existingRiversPathes.current[i].name
@@ -429,14 +372,12 @@ export default function CreateMapPage() {
       }
 
       for (let i = 0; i < existingBordersPathes.current.length; i++) {
-        
         if (ctx.isPointInPath(
-            existingBordersPathes.current[i].path,
-            mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
+          existingBordersPathes.current[i].path,
+          mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
         )) {
-          console.log(`Clicked inside of ${existingBordersPathes.current[i].name} country`)
-          if(selectedCountry.current === existingBordersPathes.current[i].name)
-          {
+          //console.log(`Clicked inside of ${existingBordersPathes.current[i].name} country`)
+          if (selectedCountry.current === existingBordersPathes.current[i].name) {
             selectedCountry.current = false
           } else {
             selectedCountry.current = existingBordersPathes.current[i].name
@@ -526,9 +467,8 @@ export default function CreateMapPage() {
       drawMap(mapOffsetX.current, mapOffsetY.current)
       return
     }
-    if (mapScale.current / scaleProperties.step < scaleProperties.min) {
-      return
-    }
+    if (mapScale.current / scaleProperties.step < scaleProperties.min) return
+    
     mapScale.current /= scaleProperties.step
     updateMapOffset(mapOffsetX.current * scaleProperties.step,
       mapOffsetY.current * scaleProperties.step)
@@ -555,15 +495,19 @@ export default function CreateMapPage() {
   const drawMap: any = (offsetX: any, offsetY: any) => {
     if (!canvasRef.current || mapUrl == null) return
 
-    canvasRef.current.width = window.innerWidth
-    canvasRef.current.height = window.innerHeight
+    canvasRef.current.width = Math.round(window.innerWidth)
+    canvasRef.current.height = Math.round(window.innerHeight)
     let mapImage: any = mapRef.current
-
     let ctx: any = canvasRef.current.getContext('2d')
+
     if (offsetX * mapScale.current >= mapImage.width ||
       offsetX * mapScale.current <= -mapImage.width) offsetX %= mapImage.width / mapScale.current
+    if (offsetX < 0) offsetX += mapImage.width / mapScale.current
+    //ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
 
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+    let clippedPath: Path2D = new Path2D()
+    clippedPath.rect(-1, -1, canvasRef.current.width + 2, canvasRef.current.height + 2)
+    ctx.clip(clippedPath)
 
     ctx.drawImage(mapImage,
       offsetX * mapScale.current, offsetY * mapScale.current,
@@ -589,80 +533,132 @@ export default function CreateMapPage() {
         -offsetX * mapScale.current, canvasRef.current.height * mapScale.current,
         0, 0, -offsetX, canvasRef.current.height)
     }
-    if (!existingBorders.current.length) return
-    existingBordersPathes.current = []
     existingRiversPathes.current = []
+    existingBordersPathes.current = []
+    existingCitiesPathes.current = []
+    let drawPath: Path2D = new Path2D()
+    let coordX = (offsetX * mapScale.current) % mapImage.width
 
-    let coordX = (offsetX * mapScale.current) % mapRef.current.width
-    ctx.lineCap = "round";
-    ctx.lineWidth = (mapScaleProperties.current.max - mapScale.current) / 4
-    
     for (let k = coordX - mapImage.width; k <= coordX + mapImage.width; k += mapImage.width) {
-      ctx.fillStyle = drawBorderProperties.current.borderShapeFillColor
-      ctx.strokeStyle = drawBorderProperties.current.borderShapeStrokeColor
-      for (let i = 0; i < existingBorders.current.length; i++) {
-        if (!(existingBorders.current[i].max[0] > k &&
-          existingBorders.current[i].min[0] < k + canvasRef.current.width * mapScale.current &&
-          existingBorders.current[i].max[1] > offsetY * mapScale.current &&
-          existingBorders.current[i].min[1] < offsetY * mapScale.current + canvasRef.current.height * mapScale.current)) {
+      if (existingBorders.current.length) {
+        ctx.lineCap = "round";
+        ctx.fillStyle = drawBorderProperties.current.borderShapeFillColor
+        ctx.lineWidth = (mapScaleProperties.current.max - mapScale.current) / 4
+        ctx.strokeStyle = drawBorderProperties.current.borderShapeStrokeColor
+        drawPath.moveTo(
+          ((existingBorders.current[0].point[0] - k)) / mapScale.current,
+          (existingBorders.current[0].point[1] / mapScale.current - offsetY)
+        )
+      }
+      for (let i = 1; i < existingBorders.current.length; i++) {
+
+        if (existingBorders.current[i].countryName !== existingBorders.current[i - 1].countryName ||
+          existingBorders.current[i].selection !== existingBorders.current[i - 1].selection ||
+          (i === existingBorders.current.length - 1)) {
+          existingBordersPathes.current.push({
+            name: existingBorders.current[i - 1].countryName,
+            path: drawPath
+          })
+
+          if (selectedCountry.current === existingBorders.current[i - 1].countryName) {
+            ctx.fill(drawPath)
+          }
+          ctx.stroke(drawPath)
+          drawPath = new Path2D()
+
+          drawPath.moveTo(
+            ((existingBorders.current[i].point[0] - k)) / mapScale.current,
+            (existingBorders.current[i].point[1] / mapScale.current - offsetY)
+          )
           continue
         }
-        let drawPath = new Path2D()
-        drawPath.moveTo((existingBorders.current[i][0].pointX - k) / mapScale.current + ctx.lineWidth*2/mapScale.current,
-          (existingBorders.current[i][0].pointY - offsetY * mapScale.current) / mapScale.current)
-        for (let j = 1; j < existingBorders.current[i].length; j++) {
-          if (existingBorders.current[i][j].countryName != existingBorders.current[i][j - 1].countryName ||
-            existingBorders.current[i][j].selection != existingBorders.current[i][j - 1].selection) {
+        drawPath.lineTo(
+          ((existingBorders.current[i].point[0] - k)) / mapScale.current,
+          (existingBorders.current[i].point[1] / mapScale.current - offsetY)
+        )
+        if (i === existingBorders.current.length - 2) {
+          drawPath.lineTo(
+            ((existingBorders.current[i + 1].point[0] - k)) / mapScale.current,
+            (existingBorders.current[i + 1].point[1] / mapScale.current - offsetY)
+          )
+        }
+      }
+      if (existingRiverBorders.current.length) {
+        drawPath = new Path2D()
+        drawPath.moveTo(
+          ((existingRiverBorders.current[0].point[0] - k)) / mapScale.current,
+          (existingRiverBorders.current[0].point[1] / mapScale.current - offsetY)
+        )
+      }
+      for (let i = 1; i < existingRiverBorders.current.length; i++) {
 
-            drawPath.moveTo((existingBorders.current[i][j].pointX - k) / mapScale.current + ctx.lineWidth*2/mapScale.current,
-              (existingBorders.current[i][j].pointY - offsetY * mapScale.current) / mapScale.current)
-            continue
+        if (i === existingRiverBorders.current.length - 1) {
+          drawPath.lineTo(
+            ((existingRiverBorders.current[i].point[0] - k)) / mapScale.current,
+            (existingRiverBorders.current[i].point[1] / mapScale.current - offsetY))
+        }
+        if (existingRiverBorders.current[i].name !== existingRiverBorders.current[i - 1].name ||
+          existingRiverBorders.current[i].selection !== existingRiverBorders.current[i - 1].selection ||
+          (i === existingRiverBorders.current.length - 1)) {
+          existingRiversPathes.current.push({
+            name: existingRiverBorders.current[i - 1].name,
+            path: drawPath
+          })
+
+          if (selectedRiver.current === existingRiverBorders.current[i - 1].name) {
+            ctx.strokeStyle = drawBorderProperties.current.waterBorderShapeFillColor
+          } else {
+            ctx.strokeStyle = drawBorderProperties.current.waterBorderShapeStrokeColor
           }
-          drawPath.lineTo((existingBorders.current[i][j].pointX - k) / mapScale.current + ctx.lineWidth*2/mapScale.current,
-            (existingBorders.current[i][j].pointY - offsetY * mapScale.current) / mapScale.current)
+          ctx.stroke(drawPath)
+
+          drawPath = new Path2D()
+          drawPath.moveTo(
+            ((existingRiverBorders.current[i].point[0] - k)) / mapScale.current,
+            (existingRiverBorders.current[i].point[1] / mapScale.current - offsetY)
+          )
+          continue
         }
-        existingBordersPathes.current.push({
-          name: existingBorders.current[i][0].countryName, 
-          path: drawPath
-        })
-        
-        if (selectedCountry.current === existingBorders.current[i][0].countryName) {
-          ctx.fill(drawPath)
-        }
-        ctx.stroke(drawPath)
+
+        drawPath.lineTo(
+          ((existingRiverBorders.current[i].point[0] - k)) / mapScale.current,
+          (existingRiverBorders.current[i].point[1] / mapScale.current - offsetY)
+        )
+
       }
 
-      for (let i = 0; i < existingRiverBorders.current.length; i++) {
-        if (!(existingRiverBorders.current[i].max[0] > k &&
-          existingRiverBorders.current[i].min[0] < k + canvasRef.current.width * mapScale.current &&
-          existingRiverBorders.current[i].max[1] > offsetY * mapScale.current &&
-          existingRiverBorders.current[i].min[1] < offsetY * mapScale.current + canvasRef.current.height * mapScale.current)) {
-          continue
-        }
-        let drawPath = new Path2D()
-        drawPath.moveTo((existingRiverBorders.current[i][0].pointX - k) / mapScale.current + ctx.lineWidth*2/mapScale.current,
-          (existingRiverBorders.current[i][0].pointY - offsetY * mapScale.current) / mapScale.current)
-        for (let j = 1; j < existingRiverBorders.current[i].length; j++) {
-          if (existingRiverBorders.current[i][j].name != existingRiverBorders.current[i][j - 1].name ||
-            existingRiverBorders.current[i][j].selection != existingRiverBorders.current[i][j - 1].selection) {
+      for (let i = 0; i < existingCities.current.length; i++) {
 
-            drawPath.moveTo((existingRiverBorders.current[i][j].pointX - k) / mapScale.current + ctx.lineWidth*2/mapScale.current,
-              (existingRiverBorders.current[i][j].pointY - offsetY * mapScale.current) / mapScale.current)
-            continue
-          }
-          drawPath.lineTo((existingRiverBorders.current[i][j].pointX - k) / mapScale.current + ctx.lineWidth*2/mapScale.current,
-            (existingRiverBorders.current[i][j].pointY - offsetY * mapScale.current) / mapScale.current)
+        drawPath = new Path2D()
+        if (existingCities.current[i].type) {
+          ctx.strokeStyle = '#e8b04f'
+          drawPath.arc(
+            ((existingCities.current[i].point[0] - k)) / mapScale.current,
+            (existingCities.current[i].point[1] / mapScale.current - offsetY),
+            6.5 / mapScale.current, 0, 2 * Math.PI
+          )
+          drawPath.closePath()
+          ctx.stroke(drawPath)
         }
-        existingRiversPathes.current.push({
-          name: existingRiverBorders.current[i][0].name, 
-          path: drawPath
-        })
-        if (selectedRiver.current === existingRiverBorders.current[i][0].name) {
-          ctx.strokeStyle = drawBorderProperties.current.waterBorderShapeFillColor
-        } else {
-          ctx.strokeStyle = drawBorderProperties.current.waterBorderShapeStrokeColor
-        }
+        drawPath = new Path2D()
+        ctx.strokeStyle = '#abc9b46b'
+        drawPath.arc(
+          ((existingCities.current[i].point[0] - k)) / mapScale.current,
+          (existingCities.current[i].point[1] / mapScale.current - offsetY),
+          6 / mapScale.current, 0, 2 * Math.PI
+        )
+        drawPath.closePath()
         ctx.stroke(drawPath)
+        let unitsReinf = Math.ceil(existingCities.current[i].pop_max / 500000)
+        if (unitsReinf > 15) unitsReinf = 15
+       
+        ctx.strokeStyle = 'white'
+        ctx.font = `${6 / mapScale.current}px Verdana`
+        ctx.strokeText(unitsReinf,
+          ((existingCities.current[i].point[0] - k - 1) - unitsReinf.toString().length * 1.5) / mapScale.current,
+          ((existingCities.current[i].point[1] + 1.5) / mapScale.current - offsetY)
+        )
+        ctx.stroke()
       }
     }
     return
@@ -697,7 +693,7 @@ export default function CreateMapPage() {
             <div>
               <Modal.Header style={modalProperties.current}>
                 <Modal.Title>
-                  {bordersModalError ? bordersModalError : 'Succesfully saved borders!'}
+                  {bordersModalError ? bordersModalError : 'Successfully saved borders!'}
                 </Modal.Title>
                 <Button className={'btn-close btn-close-white'}
                   style={{ marginLeft: '15px', marginTop: '10px', padding: 0 }}
@@ -718,8 +714,8 @@ export default function CreateMapPage() {
                   <Form.Label>
                     Select selection type [country or river]
                   </Form.Label>
-                  <Form.Select size='lg' onChange={handleSelectChange} value={formSelectName} 
-                    style={{textAlign: 'center'}}>
+                  <Form.Select size='lg' onChange={handleSelectChange} value={formSelectName}
+                    style={{ textAlign: 'center' }}>
                     <option value='country'>Country</option>
                     <option value='river'>River</option>
                   </Form.Select>
@@ -739,11 +735,9 @@ export default function CreateMapPage() {
               <Modal.Footer style={modalProperties.current}>
                 <Button variant="primary"
                   style={{ marginRight: '15px' }}
-                  onClick={
-                    formSelectName === 'country' ? handleBordersSave : handleRiversSave
-                  }>
-                    Save borders
-                  </Button>
+                  onClick={handleBordersSave}>
+                  Save borders
+                </Button>
                 <Button variant="secondary" onClick={handleBordersModalOnClose}>Cancel link</Button>
               </Modal.Footer>
             </div>
@@ -767,24 +761,28 @@ export default function CreateMapPage() {
       </Modal>
 
       <Modal
-        show={loadingExistingBorders || loadingExistingRivers}
-        onHide={handleBordersModalOnClose}
+        show={loadingExistingBorders}
         backdrop="static"
         keyboard={false}
       >
         <Draggable>
           <div>
             <Modal.Header style={modalProperties.current}>
-              <Modal.Title>Loading {loadingExistingBorders ? `borders` : `rivers`} -&nbsp; 
-              {loadingExistingBorders ? (`${bordersLoadingData[0]}%`) : (`${riversLoadingData[0]}%`)}
-              </Modal.Title>
+              <Modal.Title>Loading borders</Modal.Title>
             </Modal.Header>
-
-            <Modal.Body style={modalProperties.current}>
-              <p style={{ margin: 0 }}>
-                {loadingExistingBorders ? bordersLoadingData[1] : riversLoadingData[1]}
-              </p>
-            </Modal.Body>
+          </div>
+        </Draggable>
+      </Modal>
+      <Modal
+        show={loadingExistingRivers}
+        backdrop="static"
+        keyboard={false}
+      >
+        <Draggable>
+          <div>
+            <Modal.Header style={modalProperties.current}>
+              <Modal.Title>Loading rivers</Modal.Title>
+            </Modal.Header>
           </div>
         </Draggable>
       </Modal>
