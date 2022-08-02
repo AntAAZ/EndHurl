@@ -56,7 +56,7 @@ class expressApp
                 saveUninitialized: true,
                 store: MongoStore.create({
                     //mongoUrl: `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.yymov.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`
-                    mongoUrl: `mongodb://localhost:27017/${process.env.DB_NAME}?retryWrites=true&w=majority`
+                    mongoUrl: `mongodb://127.0.0.1:27017/${process.env.DB_NAME}?retryWrites=true&w=majority`
                 })
             }))
             .use(cookieParser())

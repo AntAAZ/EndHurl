@@ -4,7 +4,7 @@ const env: NodeJS.ProcessEnv = process.env;
 
 mongoose.connect(
     //`mongodb+srv://${env.DB_USER}:${env.DB_PASS}@cluster0.yymov.mongodb.net/${env.DB_NAME}?retryWrites=true&w=majority`,
-    `mongodb://localhost:27017/${env.DB_NAME}?retryWrites=true&w=majority`,
+    `mongodb://127.0.0.1:27017/${env.DB_NAME}?retryWrites=true&w=majority`,
     {},
     (err: Error) => {
         if(err) {

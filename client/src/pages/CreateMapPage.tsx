@@ -3,7 +3,6 @@ import { userDataContext } from '../contexts/UserDataContext'
 import { Button, Modal, Form } from 'react-bootstrap'
 import Draggable from 'react-draggable'
 import MapsPage from './MapsPage'
-import axios from 'axios'
 import { City, River } from '../types/types'
 import { addCityToMap, getCitiesByMap, getNECities } from '../api/citiesAPI'
 import { addWaterToMap, getWatersByMap, getNEWaters } from '../api/riversAPI'
@@ -18,7 +17,16 @@ export default function CreateMapPage() {
 
   const mapScale: any = useRef(1)
   const mapScaleProperties: any = useRef({
-    step: 1.1, min: 0.01, max: 6
+    step: 1.1, min: 0.25, max: 6
+  })
+  const mapProperties: any = useRef({
+    borderLineWidths: 0.5,
+    cityStrokeColor: '#abc9b46b',
+    capitalCityStrokeColor: '#e8b04f',
+    cityRadius: 6,
+    capitalCityRadius: 6.5,
+    maxDefaultUnitsInCity: 15,
+    unitsInCityPerPopulation: 500000
   })
   const drawBorderProperties: any = useRef({
     startPointColor: 'yellow',
@@ -62,6 +70,7 @@ export default function CreateMapPage() {
   //
   const selectedRiver = useRef<any>(false)
   const selectedCountry = useRef<any>(false)
+  const selectedCity = useRef<any>(false)
   const existingBorders = useRef<any[]>([])
   const existingRiverBorders = useRef<any[]>([])
   const existingCities = useRef<any[]>([])
@@ -282,7 +291,7 @@ export default function CreateMapPage() {
     drawBorderStartPoint(ctx, drawBorderProperties.current.startPointColor)
 
     ctx.strokeStyle = drawBorderProperties.current.borderLineColor
-    ctx.lineWidth = (mapScaleProperties.current.max - mapScale.current) / 4
+    ctx.lineWidth = mapProperties.current.borderLineWidths
 
     let drawPath = new Path2D()
     drawPath.moveTo(drawBorderHelperPos.current[0][0], drawBorderHelperPos.current[0][1])
@@ -313,7 +322,7 @@ export default function CreateMapPage() {
     }
     if (e.code === 'KeyZ') {
       if ((!isDrawingBorder.current) || !borders.current.length) return
-      
+
       borders.current.pop()
       drawBorderHelperPos.current.pop()
       redrawMapWithCurrentBorders()
@@ -350,41 +359,49 @@ export default function CreateMapPage() {
       (mousePos.current[1] - rect.top) * mapScale.current + mapOffsetY.current * mapScale.current
     ]
     let ctx: any = canvasRef.current.getContext('2d')
-
+    let mapWidth: any = mapRef.current.width
     if (!isDrawingBorder.current) {
+      for (let k = coordX - mapWidth; k <= coordX + mapWidth; k += mapWidth) {
+        ctx.scale(1 / mapScale.current, 1 / mapScale.current)
+        ctx.translate(-mapWidth / 2 - k, -mapOffsetY.current * mapScale.current)
+        for (let i = 0; i < existingCitiesPathes.current.length; i++) {
 
-      for (let i = 0; i < existingRiversPathes.current.length; i++) {
-
-        if (ctx.isPointInStroke(
-          existingRiversPathes.current[i].path,
-          mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
-        )) {
-          //console.log(`Clicked on ${existingRiversPathes.current[i].name} river`)
-          selectedCountry.current = false
-          if (selectedRiver.current === existingRiversPathes.current[i].name) {
-            selectedRiver.current = false
-          } else {
-            selectedRiver.current = existingRiversPathes.current[i].name
+          if (ctx.isPointInPath(
+            existingCitiesPathes.current[i].path,
+            mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
+          )) {
+            selectedCity.current = existingCitiesPathes.current[i]
+            console.log(selectedCity.current)
+            ctx.setTransform(1, 0, 0, 1, 0, 0)
+            drawMap(mapOffsetX.current, mapOffsetY.current)
+            return
           }
-          drawMap(mapOffsetX.current, mapOffsetY.current)
-          return
         }
-      }
-
-      for (let i = 0; i < existingBordersPathes.current.length; i++) {
-        if (ctx.isPointInPath(
-          existingBordersPathes.current[i].path,
-          mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
-        )) {
-          //console.log(`Clicked inside of ${existingBordersPathes.current[i].name} country`)
-          if (selectedCountry.current === existingBordersPathes.current[i].name) {
-            selectedCountry.current = false
-          } else {
-            selectedCountry.current = existingBordersPathes.current[i].name
+        for (let i = 0; i < existingRiversPathes.current.length; i++) {
+          if (ctx.isPointInStroke(
+            existingRiversPathes.current[i].path,
+            mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
+          )) {
+            selectedRiver.current = existingRiversPathes.current[i]
+            console.log(selectedRiver.current)
+            drawMap(mapOffsetX.current, mapOffsetY.current)
+            ctx.setTransform(1, 0, 0, 1, 0, 0)
+            return
           }
-          drawMap(mapOffsetX.current, mapOffsetY.current)
         }
+
+        for (let i = 0; i < existingBordersPathes.current.length; i++) {
+          if (ctx.isPointInPath(
+            existingBordersPathes.current[i].path,
+            mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
+          )) {
+            selectedCountry.current = existingBordersPathes.current[i]
+            console.log(selectedCountry.current)
+          }
+        }
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
       }
+      drawMap(mapOffsetX.current, mapOffsetY.current)
       return
     }
 
@@ -396,7 +413,7 @@ export default function CreateMapPage() {
       return
     }
 
-    ctx.lineWidth = (mapScaleProperties.current.max - mapScale.current) / 4
+    ctx.lineWidth = mapProperties.current.borderLineWidths
 
     if (trueMousePosition[0] + mapScale.current * mapScaleProperties.current.max > borders.current[0][0] &&
       trueMousePosition[0] - mapScale.current * mapScaleProperties.current.max < borders.current[0][0] &&
@@ -468,7 +485,7 @@ export default function CreateMapPage() {
       return
     }
     if (mapScale.current / scaleProperties.step < scaleProperties.min) return
-    
+
     mapScale.current /= scaleProperties.step
     updateMapOffset(mapOffsetX.current * scaleProperties.step,
       mapOffsetY.current * scaleProperties.step)
@@ -494,37 +511,33 @@ export default function CreateMapPage() {
 
   const drawMap: any = (offsetX: any, offsetY: any) => {
     if (!canvasRef.current || mapUrl == null) return
-
-    canvasRef.current.width = Math.round(window.innerWidth)
-    canvasRef.current.height = Math.round(window.innerHeight)
-    let mapImage: any = mapRef.current
+    canvasRef.current.width = window.innerWidth
+    canvasRef.current.height = window.innerHeight
     let ctx: any = canvasRef.current.getContext('2d')
+    let mapImage: any = mapRef.current
 
     if (offsetX * mapScale.current >= mapImage.width ||
       offsetX * mapScale.current <= -mapImage.width) offsetX %= mapImage.width / mapScale.current
     if (offsetX < 0) offsetX += mapImage.width / mapScale.current
-    //ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
 
     let clippedPath: Path2D = new Path2D()
-    clippedPath.rect(-1, -1, canvasRef.current.width + 2, canvasRef.current.height + 2)
+    clippedPath.rect(0, 0, canvasRef.current.width, canvasRef.current.height)
     ctx.clip(clippedPath)
+    clippedPath.closePath()
 
     ctx.drawImage(mapImage,
       offsetX * mapScale.current, offsetY * mapScale.current,
-      (canvasRef.current.width - offsetX) * mapScale.current, canvasRef.current.height * mapScale.current,
-      0, 0, (canvasRef.current.width - offsetX), canvasRef.current.height)
-
-    ctx.drawImage(mapImage,
-      canvasRef.current.width * mapScale.current, offsetY * mapScale.current,
-      offsetX * mapScale.current, canvasRef.current.height * mapScale.current,
-      (canvasRef.current.width - offsetX), 0, offsetX, canvasRef.current.height)
+      canvasRef.current.width * mapScale.current, canvasRef.current.height * mapScale.current,
+      0, 0, canvasRef.current.width, canvasRef.current.height)
 
     if (offsetX > mapImage.width / mapScale.current - canvasRef.current.width) {
       ctx.drawImage(mapImage,
         0, offsetY * mapScale.current,
         offsetX * mapScale.current - mapImage.width + canvasRef.current.width * mapScale.current,
         canvasRef.current.height * mapScale.current,
-        mapImage.width / mapScale.current - offsetX, 0,
+        mapImage.width / mapScale.current - offsetX - 0.5, 0,
         offsetX - mapImage.width / mapScale.current + canvasRef.current.width, canvasRef.current.height)
     }
     else if (offsetX < 0) {
@@ -533,134 +546,186 @@ export default function CreateMapPage() {
         -offsetX * mapScale.current, canvasRef.current.height * mapScale.current,
         0, 0, -offsetX, canvasRef.current.height)
     }
-    existingRiversPathes.current = []
-    existingBordersPathes.current = []
-    existingCitiesPathes.current = []
+    //existingRiversPathes.current = []
+    //existingBordersPathes.current = []
+    //existingCitiesPathes.current = []
     let drawPath: Path2D = new Path2D()
     let coordX = (offsetX * mapScale.current) % mapImage.width
 
     for (let k = coordX - mapImage.width; k <= coordX + mapImage.width; k += mapImage.width) {
-      if (existingBorders.current.length) {
-        ctx.lineCap = "round";
+      if (existingBordersPathes.current.length) {
         ctx.fillStyle = drawBorderProperties.current.borderShapeFillColor
-        ctx.lineWidth = (mapScaleProperties.current.max - mapScale.current) / 4
+        ctx.lineWidth = mapProperties.current.borderLineWidths
         ctx.strokeStyle = drawBorderProperties.current.borderShapeStrokeColor
-        drawPath.moveTo(
-          ((existingBorders.current[0].point[0] - k)) / mapScale.current,
-          (existingBorders.current[0].point[1] / mapScale.current - offsetY)
-        )
-      }
-      for (let i = 1; i < existingBorders.current.length; i++) {
-
-        if (existingBorders.current[i].countryName !== existingBorders.current[i - 1].countryName ||
-          existingBorders.current[i].selection !== existingBorders.current[i - 1].selection ||
-          (i === existingBorders.current.length - 1)) {
-          existingBordersPathes.current.push({
-            name: existingBorders.current[i - 1].countryName,
-            path: drawPath
-          })
-
-          if (selectedCountry.current === existingBorders.current[i - 1].countryName) {
-            ctx.fill(drawPath)
+        for (let i = 0; i < existingBordersPathes.current.length; i++) {
+          let drawBorderPath: Path2D = new Path2D(existingBordersPathes.current[i].path)
+          ctx.scale(1 / mapScale.current, 1 / mapScale.current)
+          ctx.translate(-mapImage.width / 2 - k, -offsetY * mapScale.current)
+          if (selectedCountry.current.countryName === existingBordersPathes.current[i].countryName) {
+            ctx.fill(drawBorderPath)
           }
-          ctx.stroke(drawPath)
-          drawPath = new Path2D()
+          ctx.stroke(drawBorderPath)
+          //existingBordersPathes.current[i].path = drawBorderPath
+          ctx.setTransform(1, 0, 0, 1, 0, 0)
+        }
+      }
 
+      if (!existingBordersPathes.current.length) {
+        if (existingBorders.current.length) {
           drawPath.moveTo(
+            ((existingBorders.current[0].point[0] - k)) / mapScale.current,
+            (existingBorders.current[0].point[1] / mapScale.current - offsetY)
+          )
+        }
+        for (let i = 1; i < existingBorders.current.length; i++) {
+          if (existingBorders.current[i].countryName !== existingBorders.current[i - 1].countryName ||
+            existingBorders.current[i].selection !== existingBorders.current[i - 1].selection ||
+            (i === existingBorders.current.length - 1)) {
+            existingBordersPathes.current.push({
+              countryName: existingBorders.current[i - 1].countryName,
+              path: drawPath
+            })
+            drawPath = new Path2D()
+
+            drawPath.moveTo(
+              ((existingBorders.current[i].point[0] - k)) / mapScale.current,
+              (existingBorders.current[i].point[1] / mapScale.current - offsetY)
+            )
+            continue
+          }
+          drawPath.lineTo(
             ((existingBorders.current[i].point[0] - k)) / mapScale.current,
             (existingBorders.current[i].point[1] / mapScale.current - offsetY)
           )
-          continue
-        }
-        drawPath.lineTo(
-          ((existingBorders.current[i].point[0] - k)) / mapScale.current,
-          (existingBorders.current[i].point[1] / mapScale.current - offsetY)
-        )
-        if (i === existingBorders.current.length - 2) {
-          drawPath.lineTo(
-            ((existingBorders.current[i + 1].point[0] - k)) / mapScale.current,
-            (existingBorders.current[i + 1].point[1] / mapScale.current - offsetY)
-          )
+          if (i === existingBorders.current.length - 2) {
+            drawPath.lineTo(
+              ((existingBorders.current[i + 1].point[0] - k)) / mapScale.current,
+              (existingBorders.current[i + 1].point[1] / mapScale.current - offsetY)
+            )
+          }
         }
       }
-      if (existingRiverBorders.current.length) {
-        drawPath = new Path2D()
-        drawPath.moveTo(
-          ((existingRiverBorders.current[0].point[0] - k)) / mapScale.current,
-          (existingRiverBorders.current[0].point[1] / mapScale.current - offsetY)
-        )
-      }
-      for (let i = 1; i < existingRiverBorders.current.length; i++) {
 
-        if (i === existingRiverBorders.current.length - 1) {
-          drawPath.lineTo(
-            ((existingRiverBorders.current[i].point[0] - k)) / mapScale.current,
-            (existingRiverBorders.current[i].point[1] / mapScale.current - offsetY))
-        }
-        if (existingRiverBorders.current[i].name !== existingRiverBorders.current[i - 1].name ||
-          existingRiverBorders.current[i].selection !== existingRiverBorders.current[i - 1].selection ||
-          (i === existingRiverBorders.current.length - 1)) {
-          existingRiversPathes.current.push({
-            name: existingRiverBorders.current[i - 1].name,
-            path: drawPath
-          })
+      if (existingRiversPathes.current.length) {
 
-          if (selectedRiver.current === existingRiverBorders.current[i - 1].name) {
+        ctx.lineWidth = mapProperties.current.borderLineWidths
+        for (let i = 0; i < existingRiversPathes.current.length; i++) {
+          let drawBorderPath: Path2D = new Path2D(existingRiversPathes.current[i].path)
+          ctx.scale(1 / mapScale.current, 1 / mapScale.current)
+          ctx.translate(-mapImage.width / 2 - k, -offsetY * mapScale.current)
+          if (selectedRiver.current.name === existingRiversPathes.current[i].name) {
             ctx.strokeStyle = drawBorderProperties.current.waterBorderShapeFillColor
           } else {
             ctx.strokeStyle = drawBorderProperties.current.waterBorderShapeStrokeColor
           }
-          ctx.stroke(drawPath)
+          ctx.stroke(drawBorderPath)
+          //existingRiversPathes.current[i].path = drawBorderPath
+          ctx.setTransform(1, 0, 0, 1, 0, 0)
+        }
+      }
 
+
+      if (!existingRiversPathes.current.length) {
+        if (existingRiverBorders.current.length) {
           drawPath = new Path2D()
           drawPath.moveTo(
+            ((existingRiverBorders.current[0].point[0] - k)) / mapScale.current,
+            (existingRiverBorders.current[0].point[1] / mapScale.current - offsetY)
+          )
+        }
+        for (let i = 1; i < existingRiverBorders.current.length; i++) {
+
+          if (i === existingRiverBorders.current.length - 1) {
+            drawPath.lineTo(
+              ((existingRiverBorders.current[i].point[0] - k)) / mapScale.current,
+              (existingRiverBorders.current[i].point[1] / mapScale.current - offsetY))
+          }
+          if (existingRiverBorders.current[i].name !== existingRiverBorders.current[i - 1].name ||
+            existingRiverBorders.current[i].selection !== existingRiverBorders.current[i - 1].selection ||
+            (i === existingRiverBorders.current.length - 1)) {
+            existingRiversPathes.current.push({
+              name: existingRiverBorders.current[i - 1].name,
+              path: drawPath
+            })
+
+            drawPath = new Path2D()
+            drawPath.moveTo(
+              ((existingRiverBorders.current[i].point[0] - k)) / mapScale.current,
+              (existingRiverBorders.current[i].point[1] / mapScale.current - offsetY)
+            )
+            continue
+          }
+
+          drawPath.lineTo(
             ((existingRiverBorders.current[i].point[0] - k)) / mapScale.current,
             (existingRiverBorders.current[i].point[1] / mapScale.current - offsetY)
           )
-          continue
+
         }
-
-        drawPath.lineTo(
-          ((existingRiverBorders.current[i].point[0] - k)) / mapScale.current,
-          (existingRiverBorders.current[i].point[1] / mapScale.current - offsetY)
-        )
-
       }
+      if(existingCitiesPathes.current.length > 0)
+      {
+        ctx.lineWidth = mapProperties.current.borderLineWidths
+        for (let i = 0; i < existingCitiesPathes.current.length; i++) {
+          let drawBorderPath: Path2D = new Path2D(existingCitiesPathes.current[i].path)
+          ctx.scale(1 / mapScale.current, 1 / mapScale.current)
+          ctx.translate(-mapImage.width/2 - k, -offsetY * mapScale.current)
+          /*if (selectedCity.current.name === existingCitiesPathes.current[i].name &&
+              selectedCity.current.area === existingCitiesPathes.current[i].area) 
+          {
+            ctx.strokeStyle = drawBorderProperties.current.waterBorderShapeFillColor
+          } else {
+            ctx.strokeStyle = drawBorderProperties.current.waterBorderShapeStrokeColor
+          }*/
+          ctx.strokeStyle = mapProperties.current.cityStrokeColor
+          if(existingCitiesPathes.current[i].type)
+          {
+            ctx.strokeStyle = mapProperties.current.capitalCityStrokeColor
+          }
+          ctx.stroke(drawBorderPath)
 
-      for (let i = 0; i < existingCities.current.length; i++) {
+          ctx.setTransform(1, 0, 0, 1, 0, 0)
 
-        drawPath = new Path2D()
-        if (existingCities.current[i].type) {
-          ctx.strokeStyle = '#e8b04f'
+          /// to redact
+          let unitsReinf = Math.ceil(
+            existingCitiesPathes.current[i].pop_max / mapProperties.current.unitsInCityPerPopulation
+          )
+          if (unitsReinf > mapProperties.current.maxDefaultUnitsInCity) {
+            unitsReinf = mapProperties.current.maxDefaultUnitsInCity
+          }
+          ctx.strokeStyle = 'white'
+          ctx.font = `${mapProperties.current.cityRadius / mapScale.current}px Verdana`
+          ctx.strokeText(unitsReinf,
+            ((existingCitiesPathes.current[i].point[0] - k - 1) - unitsReinf.toString().length * 1.5) / mapScale.current,
+            ((existingCitiesPathes.current[i].point[1] + 1.5) / mapScale.current - offsetY)
+          )
+          ctx.stroke()
+          ///
+        }
+      }
+      if (!existingCitiesPathes.current.length) {
+        for (let i = 0; i < existingCities.current.length; i++) {
+          drawPath = new Path2D()
           drawPath.arc(
             ((existingCities.current[i].point[0] - k)) / mapScale.current,
             (existingCities.current[i].point[1] / mapScale.current - offsetY),
-            6.5 / mapScale.current, 0, 2 * Math.PI
+            mapProperties.current.capitalCityRadius / mapScale.current, 0, 2 * Math.PI
           )
           drawPath.closePath()
-          ctx.stroke(drawPath)
+          
+          existingCitiesPathes.current.push({
+            point: existingCities.current[i].point,
+            name: existingCities.current[i].name,
+            type: existingCities.current[i].type,
+            area: existingCities.current[i].area,
+            pop_max: existingCities.current[i].pop_max,
+            countryName: existingCities.current[i].countryName,
+            path: drawPath
+          })
         }
-        drawPath = new Path2D()
-        ctx.strokeStyle = '#abc9b46b'
-        drawPath.arc(
-          ((existingCities.current[i].point[0] - k)) / mapScale.current,
-          (existingCities.current[i].point[1] / mapScale.current - offsetY),
-          6 / mapScale.current, 0, 2 * Math.PI
-        )
-        drawPath.closePath()
-        ctx.stroke(drawPath)
-        let unitsReinf = Math.ceil(existingCities.current[i].pop_max / 500000)
-        if (unitsReinf > 15) unitsReinf = 15
-       
-        ctx.strokeStyle = 'white'
-        ctx.font = `${6 / mapScale.current}px Verdana`
-        ctx.strokeText(unitsReinf,
-          ((existingCities.current[i].point[0] - k - 1) - unitsReinf.toString().length * 1.5) / mapScale.current,
-          ((existingCities.current[i].point[1] + 1.5) / mapScale.current - offsetY)
-        )
-        ctx.stroke()
       }
     }
+
     return
   }
 
@@ -681,7 +746,7 @@ export default function CreateMapPage() {
                     ${mouseCoords[1] + coords[1]}`}) --
         zoom({`${mapScale.current}`})
       </p>
-      <canvas ref={canvasRef} id='canvas-id' />
+      <canvas ref={canvasRef} style={{ display: 'block' }} id='canvas-id' />
       <Modal
         show={saveBordersModalShow}
         onHide={handleBordersModalOnClose}
