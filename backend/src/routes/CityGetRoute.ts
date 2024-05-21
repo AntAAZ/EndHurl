@@ -11,34 +11,25 @@ class CityGetRoute {
         this.router.get('/citiesGet', this.handleGetReq)
     }
 
-    private async handleGetReq(req: any, res: Response, next: NextFunction) 
-    {
-        if (!req.isAuthenticated()) 
-        {
-            res.status(400).send({ message: `You are not logged in` })
-            return
-        } 
-
-        let { mapName } : any = req.query
-        City.find(
-            { mapName }, 
-            {'point': 1, 'type': 1, 'name': 1, 'area': 1, 'pop_max': 1, 'countryName': 1, _id: 0 }, 
-            (err: Error, doc: any) => {
-            if(err) 
-            {
-                res.status(422).send({
-                    message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
-                })
-                return
+    private async handleGetReq(req: any, res: Response, next: NextFunction) {
+        try {
+            if (!req.isAuthenticated()) {
+                return res.status(400).json({ message: "You are not logged in" });
             }
-            if(!doc)
-            {
-                res.send([])
-                return
+    
+            const { mapName } = req.query;
+    
+            const cities = await City.find({ mapName }, { _id: 0, __v: 0 }).lean();
+    
+            if (!cities || cities.length === 0) {
+                return res.status(404).json({ message: "No cities found" });
             }
-            res.send(doc)
-        }).lean()
-        return
+    
+            return res.status(200).json(cities);
+        } catch (err) {
+            console.error("Error in City find route:", err);
+            return res.status(500).json({ message: "Internal server error" });
+        }
     }
 
     public getRouter(): Router {

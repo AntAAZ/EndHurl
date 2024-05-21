@@ -1,7 +1,6 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import Border from '../models/Border';
-import Country from '../models/Country';
 class BorderGetRoute {
 
     private router: Router = Router()
@@ -20,24 +19,28 @@ class BorderGetRoute {
         } 
 
         let { mapName } : any = req.query
+
+        try {
+            if (!mapName) {
+                res.status(401).send({ message: 'Map name is missing' });
+                return;
+            }
+            const borders = await Border.find(
+                { mapName }, 
+                { point: 1, countryName: 1, _id: 0 }
+            ).sort({ countryName: 1 }).lean();
         
-        Border.find(
-            { mapName }, 
-            {'point': 1, 'selection': 1, 'countryName': 1, _id: 0 }, 
-            (err: Error, doc: any) => {
-            if(err) 
-            {
-                res.status(422).send({
-                    message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
-                })
-                return
+            if (!borders || borders.length === 0) {
+                return res.send([]);
             }
-            if(!doc)
-            {
-                return res.send([])
-            }
-            return res.status(201).send(doc)
-        }).sort({mapName: 1}).lean()
+        
+            return res.status(200).send(borders);
+        } catch (error) {
+            console.error(`Error fetching country borders map: ${mapName}`, error);
+            return res.status(500).send({
+                message: `Internal server error`
+            });
+        }
         
     }
 

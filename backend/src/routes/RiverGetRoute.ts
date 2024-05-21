@@ -11,48 +11,30 @@ class RiverGetRoute {
         this.router.get('/riversGet', this.handleGetReq);
     }
 
-    private async handleGetReq(req: Request, res: Response, next: NextFunction)
-    {
-        if(!req.isAuthenticated())
-        {   
-            return res.status(401).send({message: "You are not logged in"})
+    private async handleGetReq(req: Request, res: Response, next: NextFunction) {
+        if (!req.isAuthenticated()) {
+            return res.status(401).send({ message: "You are not logged in" });
         }
-        //console.log(req.user)
-        let { name, mapName } = req.query
-
-        if (!name)
-        {
-            River.find({ mapName }, async(err: Error, doc: any) => {
-                if(err) 
-                {
-                    res.status(422).send({
-                        message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
-                    })
-                    return
-                }
-                if(!doc) 
-                {
-                    return
-                }
-                res.send(doc)
-            })
-            return
+    
+        const { name, mapName } = req.query;
+    
+        try {
+            if (!name) {
+                const rivers = await River.find({ mapName }).lean();
+                return res.send(rivers);
+            }
+    
+            const river = await River.findOne({ name, mapName }).lean();
+            if (!river) {
+                return res.status(404).send({ message: "River not found" });
+            }
+    
+            return res.send(river);
+            
+        } catch (err) {
+            console.error(`Error in river get route: ${err}`);
+            return res.status(500).send({ message: "Internal server error" });
         }
-        River.findOne({ name, mapName }, async(err: Error, doc: any) => {
-            if(err) 
-            {
-                res.status(422).send({
-                    message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
-                })
-                return
-            }
-            if(!doc) 
-            {
-                return
-            }
-            res.send(doc)
-        })
-        return
     }
 
     public getRouter() : Router {

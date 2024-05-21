@@ -6,9 +6,10 @@ const getNECities = async () =>
     return axGet(`getNaturalEarthCities`, {}, defaultErrorHandler)
 }
 
-const addCityToMap = async (parameterCity: City, mapName: string) => 
+const addCityToMap = async (parameterCity: any, mapName: string, errHandler?: Function) => 
 {
-    return axPost(`cityUpload`, {...parameterCity, mapName}, defaultErrorHandler)
+    !errHandler && (errHandler = defaultErrorHandler )
+    return axPost(`cityUpload`, {...parameterCity, mapName}, errHandler)
 }
 
 const getCitiesByMap = async (mapName: string) =>

@@ -1,6 +1,6 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
-let borderCountries = require('./cities.json')
+let borderCountries = require('./cityPoints.json')
 class NaturalEarthGetCityRoute {
 
     private router: Router = Router();
@@ -19,6 +19,7 @@ class NaturalEarthGetCityRoute {
         let cities: any = []
         let whitelisted: any = []
         let special: any = []
+
         whitelisted['Bulgaria'] = ['Sofia', 'Plovdiv', 'Varna']
         whitelisted['Romania'] = ['Bucharest', 'Cluj-Napoca', 'Constanța']
         whitelisted['Greece'] = ['Athens', 'Thessaloniki', 'Patra', 'Iraklio']
@@ -175,7 +176,7 @@ class NaturalEarthGetCityRoute {
         whitelisted['Ecuador'] = ['Guayaquil', 'Quito']
         whitelisted['Colombia'] = ['Bogota', 'Medellín', 'Cali', 'Barranquilla']
         whitelisted['Venezuela'] = ['Caracas', 'Maracaibo', 'Barquisimeto', 'Ciudad Guayana']
-        whitelisted['The Guyana'] = ['Georgetown']
+        whitelisted['Guyana'] = ['Georgetown']
         whitelisted['Suriname'] = ['Paramaribo']
         whitelisted['Trinidad and Tobago'] = ['Port-of-Spain']
         whitelisted['Bolivia'] = ['Santa Cruz', 'La Paz', 'Cochabamba']
@@ -201,7 +202,7 @@ class NaturalEarthGetCityRoute {
             'Cherepovets', 'Vologda', 'Petrozavodsk', 'Syktyvkar', 'Velikiy Novgorod']
         special['Russia Central'] = ['Moscow', 'Smolensk', 'Voronezh', 'Yaroslavl', 'Ryazan',
             'Lipetsk', 'Tula', 'Bryansk']
-        special['Russia Volgograd'] = ['Volgograd', 'Rostov', 'Sochi', 'Makhachkala', 'Sevastopol', 
+        special['Russia South'] = ['Volgograd', 'Rostov', 'Sochi', 'Makhachkala', 'Sevastopol', 
             'Krasnodar', 'Astrakhan']
         special['Russia Volga'] = ['Kazan', 'Nizhny Novgorod', 'Saratov', 'Samara', 'Ufa', 
             'Perm', 'Izhevsk', 'Ulyanovsk', 'Orenburg']
@@ -215,7 +216,7 @@ class NaturalEarthGetCityRoute {
 
         special['China Northeast'] = ['Harbin', 'Changchun', 'Shenyeng']
         special['China North'] = ['Beijing', 'Tianjin', 'Baotou', 'Taiyuan']
-        special['China East'] = ['Shanghai', 'Jinan', 'Fuzhou', 'Qingdao']
+        special['China Southeast'] = ['Shanghai', 'Jinan', 'Fuzhou', 'Qingdao']
         special['China Southcentral'] = ['Nanchang', 'Wuhan', 'Zhengzhou', 'Hefei', 'Changsha']
         special['China South'] = ['Shantou', 'Guangzhou', 'Hong Kong', 'Nanning', 'Sanya']
         special['China Southwest'] = ['Chengdu', 'Kunming', 'Guiyang', 'Chongqing']
@@ -260,8 +261,9 @@ class NaturalEarthGetCityRoute {
         special['USA Texas'] = ['Houston', 'Dallas', 'San Antonio', 'New Orleans']
         special['USA Great Lakes'] = ['Chicago', 'Detroit', 'Columbus', 'Indianapolis']
         special['USA South'] = ['Birmingham', 'Memphis', 'Nashville', 'Louisville']
-        special['USA Atlantic'] = ['New York', 'Washington,  D.C.', 'Philadelphia', 'Charlotte', 
-            'Jacksonville', 'Boston', 'Miami', 'Atlanta']
+        special['USA Northeast'] = ['New York', 'Philadelphia', 'Boston']
+            
+        special['USA Southeast'] = ['Washington,  D.C.', 'Charlotte', 'Jacksonville', 'Miami', 'Atlanta']
         
         let features = borderCountries.features
         for(let i = 0; i < features.length; i++)
@@ -547,7 +549,19 @@ class NaturalEarthGetCityRoute {
                     countryName: 'USA Great Lakes'
                 })
             }
-            if(special['USA Atlantic'].includes(features[i].properties.NAME) &&
+            if(special['USA Northeast'].includes(features[i].properties.NAME) &&
+            features[i].properties.ADM0NAME === 'United States of America')
+            {
+                cities.push({
+                    point: [features[i].geometry.coordinates[0], features[i].geometry.coordinates[1]],
+                    type: features[i].properties.NAME === 'New York',
+                    name: features[i].properties.NAME,
+                    area: features[i].properties.ADM1NAME,
+                    pop_max: features[i].properties.POP_MAX,
+                    countryName: 'USA Northeast'
+                })
+            }
+            if(special['USA Southeast'].includes(features[i].properties.NAME) &&
             features[i].properties.ADM0NAME === 'United States of America')
             {
                 if(features[i].properties.NAME === 'Miami' && 
@@ -566,7 +580,7 @@ class NaturalEarthGetCityRoute {
                     name: features[i].properties.NAME,
                     area: features[i].properties.ADM1NAME,
                     pop_max: features[i].properties.POP_MAX,
-                    countryName: 'USA Atlantic'
+                    countryName: 'USA Southeast'
                 })
             }
             if(special['Russia Central'].includes(features[i].properties.NAME))
@@ -591,7 +605,7 @@ class NaturalEarthGetCityRoute {
                     countryName: 'Russia Northwest'
                 })
             }
-            if(special['Russia Volgograd'].includes(features[i].properties.NAME))
+            if(special['Russia South'].includes(features[i].properties.NAME))
             {
                 if(features[i].properties.NAME_EN !== 'Rostov-on-Don' && features[i].properties.NAME === 'Rostov')
                 {
@@ -603,7 +617,7 @@ class NaturalEarthGetCityRoute {
                     name: features[i].properties.NAME,
                     area: features[i].properties.ADM1NAME,
                     pop_max: features[i].properties.POP_MAX,
-                    countryName: 'Russia Volgograd'
+                    countryName: 'Russia South'
                 })
             }
             if(special['Russia Volga'].includes(features[i].properties.NAME))
@@ -716,7 +730,7 @@ class NaturalEarthGetCityRoute {
                     countryName: 'China North'
                 })
             }
-            if(special['China East'].includes(features[i].properties.NAME))
+            if(special['China Southeast'].includes(features[i].properties.NAME))
             {
                 cities.push({
                     point: [features[i].geometry.coordinates[0], features[i].geometry.coordinates[1]],
@@ -724,7 +738,7 @@ class NaturalEarthGetCityRoute {
                     name: features[i].properties.NAME,
                     area: features[i].properties.ADM1NAME,
                     pop_max: features[i].properties.POP_MAX,
-                    countryName: 'China East'
+                    countryName: 'China Southeast'
                 })
             }
             if(special['China Southcentral'].includes(features[i].properties.NAME))

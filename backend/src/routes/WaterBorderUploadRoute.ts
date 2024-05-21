@@ -12,65 +12,58 @@ class WaterBorderUploadRoute {
         this.router.post('/waterBorderUpload', this.handlePostReq)
     }
 
-    private async handlePostReq(req: any, res: Response, next: NextFunction) 
-    {
-        if (!req.isAuthenticated()) 
-        {
-            res.status(400).send({ message: `You are not logged in` })
+    private async handlePostReq(req: any, res: Response, next: NextFunction) {
+        if (!req.isAuthenticated()) {
+            res.status(400).send({ message: `You are not logged in` });
             return
         } 
         
-        const { points, name, mapName } = req.body
-        console.log(points)
-
-        if(!mapName)
-        {
-            res.status(401).send({ message: `Your map name is missing` })
+        const { points, name, mapName } = req.body;
+    
+        if (!mapName) {
+            res.status(401).send({ message: `Your map name is missing` });
             return
         }
-
-        if(mapName.length < parseInt(process.env.MAPNAME_MIN_CHARS || "") ||
-            mapName.length > parseInt(process.env.MAPNAME_MAX_CHARS || ""))
-        {
-            res.status(401).send({ message: `Map name must be
-                ${process.env.MAPNAME_MIN_CHARS}-${process.env.MAPNAME_MAX_CHARS} symbols` })
+    
+        const mapNameLength = mapName.length;
+        const minChars = parseInt(process.env.MAPNAME_MIN_CHARS || "");
+        const maxChars = parseInt(process.env.MAPNAME_MAX_CHARS || "");
+    
+        if (mapNameLength < minChars || mapNameLength > maxChars) {
+            res.status(401).send({ message: `Map name must be ${minChars}-${maxChars} symbols` });
             return
         }
-        if(!name)
-        {
-            res.status(401).send({ message: `Your selection name is missing` })
+    
+        if (!name) {
+            res.status(401).send({ message: `Your selection name is missing` });
             return
         }
         
-        if(!points || !(points instanceof Array))
-        {
-            res.status(401).send({ message: `Your border points are missing` })
+        if (!points || !Array.isArray(points) || points.length === 0) {
+            res.status(401).send({ message: `Your border points are missing` });
             return
         }
-        River.findOne({ name, mapName }, async(err: Error, doc: any) => {
-            if(err) 
-            {
-                res.status(422).send({
-                    message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
-                })
-                return
+    
+        try {
+            const existingRiver = await River.findOne({ name, mapName }).lean();
+    
+            if (!existingRiver) {
+                await new River({ name, mapName }).save();
             }
-            if(!doc) 
-            {
-                //res.status(404).send({message: `A country with this name doesn't exist`})
-                await new River({ name, mapName }).save()
-            }
-            let uuidVal = uuidv4()
-            for(let i = 0; i < points.length; i++)
-            {
-                await new WaterBorder({
-                    point: points[i], selection: uuidVal, name, mapName
-                }).save()
-            }
-            return res.send("success")
-        }).lean()
-        
+    
+            await Promise.all(points.map((point: number[]) => {
+                new WaterBorder({ point, name, mapName }).save();
+            }));
+    
+            res.send("success");
+        } catch (err) {
+            console.error(err);
+            res.status(500).send({
+                message: `Internal server error`
+            });
+        }
     }
+    
 
     public getRouter(): Router {
         return this.router;

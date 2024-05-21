@@ -22,9 +22,9 @@ const city/**: mongoose.SchemaDefinitionProperty<BorderInterface>*/ = new mongoo
         type: String
     }
 })
-city.index({ type: 1 })
+/*city.index({ type: 1 })
 city.index({ mapName: 1, countryName: 1 })
-city.index({ mapName: 1, countryName: 1, area: 1 })
+city.index({ mapName: 1, countryName: 1, area: 1 })*/
 
 export default mongoose.model("City", city);
 

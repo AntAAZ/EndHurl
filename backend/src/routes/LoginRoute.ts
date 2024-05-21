@@ -20,11 +20,9 @@ class LoginRoute {
         
         passport.authenticate('local', (err, user, info) => {
 
-            if(err) 
-            {
-                res.status(422).send({
-                    message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
-                })
+            if (err) {
+                console.error(`Error during authentication: ${err}`);
+                res.status(500).send({ message: "Internal server error" });
                 return
             }
 
@@ -35,14 +33,12 @@ class LoginRoute {
             }
 
             req.login(user, async(err: Error) => {
-                if(err) 
-                {
-                    res.status(422).send({
-                        message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
-                    })
+                if (err) {
+                    console.error(`Error during authentication: ${err}`);
+                    res.status(500).send({ message: "Internal server error" });
                     return
                 }
-                return res.send({message: 'success'})
+                res.send({message: 'success'})
             })
 
         })(req, res, next)

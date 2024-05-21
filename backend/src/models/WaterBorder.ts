@@ -3,9 +3,6 @@ const WaterBorder/**: mongoose.SchemaDefinitionProperty<BorderInterface>*/ = new
     point : {
         type: Array,
     },
-    selection: {
-        type: String
-    },
     name: {
         type: String
     },
@@ -14,6 +11,6 @@ const WaterBorder/**: mongoose.SchemaDefinitionProperty<BorderInterface>*/ = new
     }
 })
 
-WaterBorder.index({ mapName: 1 })
+//WaterBorder.index({ mapName: 1 })
 export default mongoose.model("WaterBorder", WaterBorder);
 

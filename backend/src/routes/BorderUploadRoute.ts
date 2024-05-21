@@ -13,68 +13,52 @@ class BorderUploadRoute {
 
     private async handlePostReq(req: any, res: Response, next: NextFunction) 
     {
-        if (!req.isAuthenticated()) 
-        {
-            res.status(400).send({ message: `You are not logged in` })
-            return
-        } 
-        
-        const { points, countryName, mapName } = req.body
-        //console.log(req.body)
-        if(!mapName)
-        {
-            res.status(401).send({ message: `Your map name is missing` })
-            return
-        }
+        const { points, countryName, mapName } = req.body;
+        try {
 
-        if(mapName.length < parseInt(process.env.MAPNAME_MIN_CHARS || "") ||
-            mapName.length > parseInt(process.env.MAPNAME_MAX_CHARS || ""))
-        {
-            res.status(401).send({ message: `Map name must be
-                ${process.env.MAPNAME_MIN_CHARS}-${process.env.MAPNAME_MAX_CHARS} symbols` })
-            return
-        }
+            // Validate input data
+            if (!req.isAuthenticated()) {
+                res.status(400).send({ message: 'You are not logged in' });
+                return;
+            }
+            if (!mapName || !countryName) {
+                res.status(401).send({ message: 'Map name or country name is missing' });
+                return;
+            }
+            const mapNameLength = mapName.length;
+            const countryNameLength = countryName.length;
+            const minMapNameLength = parseInt(process.env.MAPNAME_MIN_CHARS || '0', 10);
+            const maxMapNameLength = parseInt(process.env.MAPNAME_MAX_CHARS || '0', 10);
+            const minCountryNameLength = parseInt(process.env.COUNTRYNAME_MIN_CHARS || '0', 10);
+            const maxCountryNameLength = parseInt(process.env.COUNTRYNAME_MAX_CHARS || '0', 10);
+            if (mapNameLength < minMapNameLength || mapNameLength > maxMapNameLength ||
+                countryNameLength < minCountryNameLength || countryNameLength > maxCountryNameLength) {
+                res.status(401).send({
+                    message: `Map name must be between ${minMapNameLength}-${maxMapNameLength} characters and country name must be between ${minCountryNameLength}-${maxCountryNameLength} characters`
+                });
+                return;
+            }
+            if (!Array.isArray(points)) {
+                res.status(401).send({ message: 'Border points must be an array' });
+                return;
+            }
 
-        if(!countryName)
-        {
-            res.status(401).send({ message: `Your country name is missing` })
-            return
-        }
-        if(countryName.length < parseInt(process.env.COUNTRYNAME_MIN_CHARS || "") ||
-            countryName.length > parseInt(process.env.COUNTRYNAME_MAX_CHARS || ""))
-        {
-            res.status(401).send({ message: `Country name must be 
-                ${process.env.COUNTRYNAME_MIN_CHARS}-${process.env.COUNTRYNAME_MAX_CHARS} symbols` })
-            return
-        }   
-        if(!points || !(points instanceof Array))
-        {
-            res.status(401).send({ message: `Your border points are missing` })
-            return
-        }
+            // Check if the country already exists
+            let country = await Country.findOne({ name: countryName, mapName });
+            if (!country) {
+                country = await new Country({ name: countryName, mapName }).save();
+            }
 
-        Country.findOne({ name: countryName, mapName }, async(err: Error, doc: any) => {
-            if(err) 
-            {
-                res.status(422).send({
-                    message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
-                })
-                return
-            }
-            if(!doc) 
-            {
-                //res.status(404).send({message: `A country with this name doesn't exist`})
-                await new Country({ name: countryName, mapName }).save()
-            }
-            let uuidVal = uuidv4()
-            for(let i = 0; i < points.length; i++)
-            {
-                await new Border({
-                    point: points[i], selection: uuidVal, countryName, mapName
-                }).save()
-            }
-            return res.send("success")
-        })
+            // Save border points
+            await Promise.all(points.map((point: number[]) => 
+                new Border({ point, countryName, mapName }).save()
+            ));
+
+            res.send('success');
+        } catch (error) {
+            console.error(`Error handling border upload map: ${mapName}`, error);
+            res.status(500).send({ message: 'Internal server error' });
+        }
     }
 
     public getRouter(): Router {

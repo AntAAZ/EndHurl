@@ -1,9 +1,13 @@
 import React from 'react'
+import { useLocation } from "react-router-dom";
 
 export default function Footer() {
 
+    const location = useLocation();
+    if (location.pathname === "/maps/create") return null;
+
     return (
-        <footer className="text-center text-white" style={{backgroundColor: "#000000"}}>
+        <footer className="footer text-center text-white" style={{backgroundColor: "#000000"}}>
             <div className="container p-4">
 
                 <section className="">

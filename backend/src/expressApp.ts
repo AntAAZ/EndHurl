@@ -82,15 +82,15 @@ class expressApp
             SetLocRoute,
             BorderUploadRoute,
             BorderGetRoute,
-            //NaturalEarthGetRoute,
+            NaturalEarthGetRoute,
             CountryGetRoute,
             RiverGetRoute,
             WaterBorderGetRoute,
             WaterBorderUploadRoute,
-            //NaturalEarthGetCityRoute,
+            NaturalEarthGetCityRoute,
             CityGetRoute,
             CityUploadRoute,
-            //NaturalEarthGetWatersRoute
+            NaturalEarthGetWatersRoute
         ]);
         this.express.use('/', router);
         this.express.use('/public/', express.static(path.join(__dirname, '../public')))

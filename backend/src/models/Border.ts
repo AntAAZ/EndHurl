@@ -3,9 +3,6 @@ const border/**: mongoose.SchemaDefinitionProperty<BorderInterface>*/ = new mong
     point : {
         type: Array,
     },
-    selection: {
-        type: String
-    },
     countryName: {
         type: String
     },
@@ -13,6 +10,6 @@ const border/**: mongoose.SchemaDefinitionProperty<BorderInterface>*/ = new mong
         type: String
     }
 })
-border.index({ mapName: 1 })
+//border.index({ mapName: 1 })
 export default mongoose.model("Border", border);
 
