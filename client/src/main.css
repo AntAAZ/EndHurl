@@ -2,14 +2,24 @@
     margin: 0;
     padding: 0;
 }
+
 :root {
     --authAlertBorder: 0;
     --authAlertTextColor: black;
-    --authAlertInfoColor: rgb(156, 143, 172);
-    --authAlertDangerColor: rgb(128, 109, 109);
-    --authPageBackgroundColor: rgb(44, 37, 54);
-    --mapPageBackgroundColor: rgb(73, 71, 59);
+    --authAlertInfoColor: rgb(146, 143, 172);
+    --authAlertDangerColor: rgb(230, 168, 168);
+    --authPageBackgroundColor: rgb(37, 32, 32);
+    --mapPageBackgroundColor: rgb(46, 45, 39);
     --inputGroupPadding: 5px 0;
+}
+.mapPageMapItem {
+    color: white;
+    text-align: center
+}
+.mainSection {
+    
+    background-color: rgb(34, 34, 34);
+    color: #cfcfcf
 }
 span {
     color: white
@@ -22,70 +32,9 @@ span {
     -ms-user-select: none;
     user-select: none;
 }
-
-@media (min-width:300px) {
-    #root .squareImagesResize {
-        background-size: 250px 250px;
-        width: 250px;
-        height: 250px;
-    }
-}
-@media (min-width:400px) {
-    #root .squareImagesResize {
-        background-size: 350px 350px;
-        width: 350px;
-        height: 350px;
-    }
-}
-@media (min-width:500px) {
-    #root .squareImagesResize {
-        background-size: 450px 450px;
-        width: 450px;
-        height: 450px;
-    }
-}
-@media (min-width:600px) {
-    #root .squareImagesResize{
-        background-size: 550px 550px;
-        width: 550px;
-        height: 550px;
-    }
-}
-@media (min-width:1000px) {
-    #root .squareImagesResize {
-        background-size: 500px 500px;
-        width: 500px;
-        height: 500px;
-    }
-}
-@media (min-width:1200px) {
-    #root .squareImagesResize {
-        background-size: 600px 600px;
-        width: 600px;
-        height: 600px;
-    }
-}
-@media (min-width:1400px) {
-    #root .squareImagesResize {
-        background-size: 700px 700px;
-        width: 700px;
-        height: 700px;
-    }
-}
-
-#root #createMap {
-    background-image: url("http://192.168.1.7:3000/public/assets/MapEdit.png");
-}
-#root #searchMap {
-    background-image: url("http://192.168.1.7:3000/public/assets/MapSearch.png");
-}
-#root #createMap:hover {
-    background-image: url("http://192.168.1.7:3000/public/assets/MapEditUpdate.png");
-    transition: all 0.5s ease-in-out 0s;
-}
-#root #searchMap:hover {
-    background-image: url("http://192.168.1.7:3000/public/assets/MapSearchUpdate.png");
-    transition: all 0.5s ease-in-out 0s;
+.form-label {
+    display: block;
+    text-align: center;
 }
 #root .navbar {
     padding-top: 0px;

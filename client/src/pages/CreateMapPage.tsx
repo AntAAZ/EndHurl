@@ -2,75 +2,26 @@ import React, { useState, useContext, useRef, useEffect, useCallback } from 'rea
 import { userDataContext } from '../contexts/UserDataContext'
 import { Button, Modal, Form } from 'react-bootstrap'
 import Draggable from 'react-draggable'
-import MapsPage from './MapsPage'
 import { addCityToMap, getCitiesByMap, getNECities } from '../api/citiesAPI'
 import { addWaterToMap, getWatersByMap, getNEWaters } from '../api/riversAPI'
 import { addCountryToMap, getCountriesByMap, getNECountries } from '../api/countriesAPI'
 import DraggableModalDialog from '../components/DraggableModalDialog';
+import MapLoader from '../components/MapLoader'; 
 
-export default function CreateMapPage() {
-
-  const mapName = useRef("myMap")
-  //const mapUrl = "../world7w.png"
-  const mapUrl = "../MapMod2.png"
-  const mapOffsetX: any = useRef()
-  const mapOffsetY: any = useRef()
-
-  const mapScale: any = useRef(1)
-
-  const mapScaleProperties: any = useRef({
-    step: 1.1, min: 0.25, max: 6
-  })
-  const mapProperties: any = useRef({
-    borderLineWidths: 1,
-    cityRadius: 8,
-    capitalCityRadius: 8,
-    maxDefaultUnitsInCity: 10,
-    unitsInCityPerPopulation: 1000000,
-    cityStrokeColor: '#585858',
-    capitalCityStrokeColor: '#5c5c5c'
-  })
-  const drawBorderProperties: any = useRef({
-    startPointColor: 'yellow',
-    borderLineColor: 'red',
-    connectingLineColor: 'yellow',
-    borderShapeStrokeColor: 'gray',
-    waterBorderShapeStrokeColor: '#5a8190',
-    waterBorderShapeFillColor: 'cyan',
-    borderShapeFillColor: 'rgba(251, 192, 147, 0.3)'
-
-  })
+export default function CreateMapPage({ mapNameParam }: any) {
+  
   const formProperties: any = useRef({
     countryNameCharsLimit: [3, 50]
   })
-  const modalProperties: any = useRef({
-    color: 'white',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'black',
-    borderColor: '#282929'
-  })
-  const canvasRef: any = useRef(null)
-  const requestIdRef: any = useRef()
-  const mousePos: any = useRef([0, 0])
-  const isDragging: any = useRef<boolean>(false)
-  const mapRef: any = useRef<HTMLImageElement>(new Image())
-  //debugging coordds for rendering, TB removed
+
   const [coords, setCoords] = useState<number[]>([])
-  const [mouseCoords, setMouseCoords] = useState<any>([0, 0])
-  //
+  const mouseCoords = useRef<any>([0, 0])
+  const movedMousePosition: any = useRef<any>([0, 0])
+
   const borders: any = useRef<number[]>([])
   const borderErrorRef = useRef<boolean>(false)
   const drawBorderHelperPos: any = useRef<number[]>([])
   const isDrawingBorder: any = useRef<boolean>(false)
-  const [isCanvasReady, setIsCanvasReady] = useState<boolean>(false)
-  const [mapLoading, setMapLoading] = useState<boolean>()
-  const [gameLoaded, setGameLoaded] = useState<boolean>()
-  
-  const [loadingModalShow, setLoadingModalShow] = useState(false);
-  const [loadingModalTitle, setLoadingModalTitle] = useState('');
-
   const [saveBordersModalShow, setSaveBordersModalShow] = useState<boolean>(false)
   const [saveCityModalShow, setSaveCityModalShow] = useState<boolean>(false)
   const [bordersModalError, setBordersModalError] = useState(null)
@@ -79,23 +30,7 @@ export default function CreateMapPage() {
   const [isCitySaveSuccess, setIsCitySaveSuccess] = useState<boolean>(false)
 
   const [loadingBorderSave, setLoadingBorderSave] = useState<boolean>(false)
-  //
-  const selectedRiver = useRef<any>(false)
-  const selectedCountry = useRef<any>(false)
-  const selectedCity = useRef<any>(false)
-  const existingBorders = useRef<any[]>([])
-  const existingRiverBorders = useRef<any[]>([])
-  const existingCities = useRef<any[]>([])
-  const existingCountries = useRef<any[]>([])
-  const existingBordersPathes = useRef<any[]>([])
-  const existingRiversPathes = useRef<any[]>([])
-  const existingCitiesPathes = useRef<any[]>([])
-  const totalCountryPopulation = useRef<any>([])
-
-  const [loadingExistingBorders, setLoadingExistingBorders] = useState<boolean>(false)
-  const [loadingExistingRivers, setLoadingExistingRivers] = useState<boolean>(false)
-  const [formName, setFormName] = useState<string>("")
-  const [formSelectName, setFormSelectName] = useState<string>("country")
+  
   const [formCity, setFormCity] = useState<any>({
     cityName: '',
     countryName: '',
@@ -103,30 +38,96 @@ export default function CreateMapPage() {
     pop_max: 0,
     type: 0
   })
+  const [formBorders, setFormBorders] = useState<any>({
+    selType: 'country',
+    selName: ''
+  })
+  const isMountedRef = useRef<any>()
   const formCityRef = useRef<any>()
   const cityErrorRef = useRef<boolean>(false)
+  const mapLoaderRef = useRef<any>()
+  const [mapRefs, setMapRefs] = useState<any>(null);
+  const [mapFncs, setMapFncs] = useState<any>(null)
 
-  const [loading, error, user] = useContext(userDataContext)
+  useEffect(() => {
+    if (mapLoaderRef.current) 
+    {
+      const refs = {
+        canvasRef: mapLoaderRef.current.canvasRef,
+        gameCanvasRef: mapLoaderRef.current.gameCanvasRef,
+        mapRef: mapLoaderRef.current.mapRef,
+        mapName: mapLoaderRef.current.mapName,
+        isDragging: mapLoaderRef.current.isDragging,
+        mousePos: mapLoaderRef.current.mousePos,
+        mapOffsetX: mapLoaderRef.current.mapOffsetX,
+        mapOffsetY: mapLoaderRef.current.mapOffsetY,
+        mapScale: mapLoaderRef.current.mapScale,
+        mapProperties: mapLoaderRef.current.mapProperties,
+        mapScaleProperties: mapLoaderRef.current.mapScaleProperties,
+        drawBorderProperties: mapLoaderRef.current.drawBorderProperties,
+        existingBorders: mapLoaderRef.current.existingBorders,
+        existingRiverBorders: mapLoaderRef.current.existingRiverBorders,
+        existingBordersPathes: mapLoaderRef.current.existingBordersPathes,
+        existingRiversPathes: mapLoaderRef.current.existingRiversPathes,
+        existingCities: mapLoaderRef.current.existingCities,
+        existingCitiesPathes: mapLoaderRef.current.existingCitiesPathes,
+        existingCountries: mapLoaderRef.current.existingCountries,
+        selectedCity: mapLoaderRef.current.selectedCity,
+        selectedCountry: mapLoaderRef.current.selectedCountry,
+        selectedRiver: mapLoaderRef.current.selectedRiver,
+        totalCountryPopulation: mapLoaderRef.current.totalCountryPopulation,
+        hoveredCountry: mapLoaderRef.current.hoveredCountry,
+        requestIdRef: mapLoaderRef.current.requestIdRef,
+        modalProperties: mapLoaderRef.current.modalProperties,
+      };
+      const fncs = {
+        addEventListeners: mapLoaderRef.current.addEventListeners,
+        getMousePos: mapLoaderRef.current.getMousePos,
+        updateMapOffset: mapLoaderRef.current.updateMapOffset,
+        initPreviousMapPosition: mapLoaderRef.current.initPreviousMapPosition,
+        getStarPathFromParams: mapLoaderRef.current.getStarPathFromParams,
+        tick: mapLoaderRef.current.tick,
+        drawMapImage: mapLoaderRef.current.drawMapImage,
+        renderMapObjects: mapLoaderRef.current.renderMapObjects
+      }
+      setMapFncs(fncs)
+      setMapRefs(refs);
 
-  const handleFormNameChange = (e: any) => { setFormName(e.target.value) }
-  const handleSelectChange = (e: any) => { setFormSelectName(e.target.value) }
-
-  const handleVisibilityChange = () => {
-    console.log(document.visibilityState)
-    if (document.visibilityState === 'visible') {
-        if(isCanvasReady && mapLoading){
-          drawMap(mapOffsetX, mapOffsetY)
-        }
     }
-  }
-  const handleBordersSave = async () => {
-    setSaveBordersModalShow(true)
-    if (formSelectName === 'country') {
+  }, [mapLoaderRef]);
+  
+  useEffect(() => {
+    if(!mapFncs) return
 
+    mapFncs.addEventListeners([
+      {name: 'keyup', fnc: keyUp}, 
+      {name: 'mouseup', fnc: mouseUp},
+      {name: 'touchend', fnc: mouseUp},
+      {name: 'mousedown', fnc: mouseDown},
+      {name: 'touchstart', fnc: mouseDown},
+      {name: 'mousemove', fnc: mouseMove},
+      {name: 'touchmove', fnc: mouseMove},
+      {name: 'wheel', fnc: mouseWheel}
+    ])
+    updateMap()
+  }, [mapFncs])
+
+  const handleFormBorders = (e: any) => { 
+    
+    setFormBorders( ({
+      ...formBorders, 
+      [e.target.name]: e.target.value
+    }))
+  }
+  const handleBordersSave = async () => 
+  {
+    setSaveBordersModalShow(true)
+    console.log(formBorders)
+    if (formBorders.selType == 'country') {
       await addCountryToMap({
-        countryName: formName,
+        countryName: formBorders.selName,
         points: [[...borders.current, borders.current[0]]]
-      }, mapName.current, (err: any) => {
+      }, mapRefs.mapName.current, (err: any) => {
         borderErrorRef.current = true
         setBordersModalError(err.response.data.message)
       })
@@ -144,13 +145,13 @@ export default function CreateMapPage() {
 
       borders.current = []
       drawBorderHelperPos.current = []
-      drawMap(mapOffsetX.current, mapOffsetY.current)
+      drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
       return
     }
     await addWaterToMap({
-      name: formName,
+      name: formBorders.selName,
       points: [borders.current]
-    }, mapName.current, (err: any) => {
+    }, mapRefs.mapName.current, (err: any) => {
       borderErrorRef.current = true
       setBordersModalError(err.response.data.message)
     })
@@ -168,7 +169,7 @@ export default function CreateMapPage() {
       
     borders.current = []
     drawBorderHelperPos.current = []
-    drawMap(mapOffsetX.current, mapOffsetY.current)
+    drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
   }
   const handleFormCityChange = (e: any) => {
       setFormCity( ({
@@ -188,7 +189,7 @@ export default function CreateMapPage() {
       type: formCityRef.current.type
     }
 
-    await addCityToMap(cityObj, mapName.current, (err: any) => {
+    await addCityToMap(cityObj, mapRefs.mapName.current, (err: any) => {
       cityErrorRef.current = true
       setCityModalError(err.response.data.message)
     })
@@ -201,294 +202,105 @@ export default function CreateMapPage() {
     setIsCitySaveSuccess(true)
   }
 
-  const loadNaturalEarthBorders = async () => {
-    let res = await getNECountries();
-    let countries = res.data;
-    let pointsForCountry : number[][][][] = [];
-    
-    countries.forEach(async (country: any) => {
-      pointsForCountry[country.name] = [];
-    })
-
-    countries.forEach(async (country: any) => {
-      for (const points of country.coords.map((points: number[][][]) => points[0])) {
-          let neBorderPoints: number[][] = [];
-          for (const point of points) {
-              neBorderPoints.push([
-                  mapRef.current.width * ((point[0] + 180) / 360), 
-                  mapRef.current.height * ((point[1] - 90) / -180)
-              ]);
-          }
-          pointsForCountry[country.name].push(neBorderPoints)
-      };       
-    })
-
-    for(var countryName in pointsForCountry){
-      await addCountryToMap({
-        countryName,
-        points: pointsForCountry[countryName],
-      },  mapName.current, (err: any) => setBordersModalError(err.response.data.message));
-    }
-  };
-
-  const loadNaturalEarthWaters = async () => {
-
-    let res = await getNEWaters()
-    let rivers = res.data
-    console.log(rivers)
-
-    let pointsForRiver : number[][][][]= [];
-    
-    rivers.forEach(async (river: any) => {
-      pointsForRiver[river.name] = [];
-    })
-
-
-    rivers.forEach(async (river: any) => {
-      for (const points of river.coords.map((points: number[][][]) => points)) {
-        console.log(points)
-        let neBorderPoints: number[][] = []
-        for (const point of points) {
-          neBorderPoints.push([
-            mapRef.current.width * ((point[0] + 180) / 360), 
-            mapRef.current.height * ((point[1] - 90) / (-180))
-          ])
-        }
-        pointsForRiver[river.name].push(neBorderPoints)
-      }
-    })
-    for(var riverName in pointsForRiver){
-      await addWaterToMap({
-        name: riverName,
-        points: pointsForRiver[riverName],
-      },  mapName.current, (err: any) => setBordersModalError(err.response.data.message));
-    }
-    
-  }
-  const loadNaturalEarthCities = async () => {
-
-    let res: any = await getNECities()
-    let cities = res.data
-    cities.forEach(async (city: any) => {
-
-      city.point = [
-        mapRef.current.width * ((city.point[0] + 180) / 360),
-        mapRef.current.height * ((city.point[1] - 90) / (-180))
-      ]
-
-      city.area == null && (city.area = city.countryName)
-      await addCityToMap(city, mapName.current)
-    })
-  }
-  const loadCountryExistingBorders = async () => {
-    setLoadingExistingBorders(true)
-    const res = await getCountriesByMap(mapName.current)
-    existingBorders.current = res.data || []
-
-    existingCountries.current = Array.from(new Set([...existingBorders.current.map((border: any) => {
-      return {
-        name: border.countryName
-      }
-    })].map(o => JSON.stringify(o))).values(), p => JSON.parse(p))
-
-    setLoadingExistingBorders(false)
-  }
-  const loadRiverExistingBorders = async () => {
-    setLoadingExistingRivers(true)
-    const res = await getWatersByMap(mapName.current)
-    existingRiverBorders.current = res.data || []
-    setLoadingExistingRivers(false)
-  }
-  const loadCountryExistingCities = async () => {
-    const res = await getCitiesByMap(mapName.current)
-    existingCities.current = res.data || []
-    for(let i = 0; i < existingCities.current.length; i++)
-    {
-      let city = existingCities.current[i]
-     
-      if(!totalCountryPopulation.current[city.countryName])
-      {
-        totalCountryPopulation.current[city.countryName] = 0
-      }
-      totalCountryPopulation.current[city.countryName] += city.pop_max
-    }
-  }
-
-  const loadAllBorders = async () => {
-    setGameLoaded(false)
-    await Promise.all([
-      loadCountryExistingBorders(),
-      loadRiverExistingBorders(),
-      loadCountryExistingCities()
-    ]).then(() => {
-      addEventListeners()
-      setGameLoaded(true)
-    })
-  }
-  const openLoadingModal = (title: string) => 
-  {
-    setLoadingModalTitle(title);
-    setLoadingModalShow(true);
-  }
-
-  const closeLoadingModal = () => 
-  {
-    setLoadingModalShow(false);
-  }
-  const initPreviousMapPosition = () => {
-
-    let mapScaleString: any = localStorage.getItem('mapScale')
-    let mapOffsetXString: any = localStorage.getItem('mapOffsetX')
-    let mapOffsetYString: any = localStorage.getItem('mapOffsetY')
-    mapScale.current = mapScaleString ? parseFloat(mapScaleString) : mapScale.current
-    mapOffsetX.current = mapOffsetXString ? parseFloat(mapOffsetXString) : mapOffsetX.current
-    mapOffsetY.current = mapOffsetYString ? parseFloat(mapOffsetYString) : mapOffsetY.current
-    
-  }
   useEffect(() => {
     formCityRef.current = formCity
   }, [formCity])
 
   useEffect(() => {
-    if(loading)
-    {
-      openLoadingModal('Loading user data .....',);
-      return
-    }
-    setLoadingModalShow(false);
-    if (!canvasRef.current) return;
-
-    setIsCanvasReady(true);
-    document.body.style.overflow = 'hidden'; 
+    isMountedRef.current = true;
 
     return () => {
-      unmountEventListeners();
-      document.body.style.overflow = ''; 
-      if (requestIdRef.current) {
-        cancelAnimationFrame(requestIdRef.current);
-      }
+      isMountedRef.current = false;
     };
-  }, [loading]);
+  }, []);
 
-  useEffect(() => {
-
-    if (!isCanvasReady) {
-      openLoadingModal('Loading map canvas ....');
-      return
-    }
-    setLoadingModalShow(false)
-
-    const loadMapAndGame = async () => 
-    {
-      setMapLoading(true);
-      mapRef.current.src = mapUrl;
-      mapRef.current.onload = async () => 
-      {
-        //loadNaturalEarthBorders();
-        //loadNaturalEarthCities();
-        //loadNaturalEarthWaters();
-        
-        updateMapOffset(mapRef.current.width / 2, 0);
-        await loadAllBorders()
-        initPreviousMapPosition();
-        setMapLoading(false);
-      }
-    }
-
-    loadMapAndGame();
-  }, [isCanvasReady]);
-
-  useEffect(() => {
-    if (!mapLoading && gameLoaded) {
-      updateMapOffset(mapOffsetX.current, mapOffsetY.current);
-      drawMap(mapOffsetX.current, mapOffsetY.current);
-      requestIdRef.current = requestAnimationFrame(tick);
-    }
-  }, [mapLoading, gameLoaded])
-
-  useEffect(() => {
-    if (mapLoading) {
-      openLoadingModal('Loading map image ....');
-    } else {
-      setLoadingModalShow(false);
-    }
-  }, [mapLoading]);
-
-
-  const addEventListeners = () => {
-    if(!canvasRef.current) return
+  const drawBorderStartPoint = (ctx: any) => 
+  {
+    ctx.fillStyle = mapRefs.drawBorderProperties.current.startPointColor
     
-    canvasRef.current.addEventListener('keyup', keyUp)
-    canvasRef.current.addEventListener('mousedown', mouseDown)
-    canvasRef.current.addEventListener('mouseup', mouseUp)
-    canvasRef.current.addEventListener('mousemove', mouseMove)
-    canvasRef.current.addEventListener('wheel', mouseWheel, { passive: false })
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    drawMap(mapOffsetX.current, mapOffsetY.current)
-  }
+    let coordX = (mapRefs.mapOffsetX.current * mapRefs.mapScale.current) 
+      % mapRefs.mapRef.current.width
+    for (let k = coordX - mapRefs.mapRef.current.width; k <= coordX + mapRefs.mapRef.current.width; k += mapRefs.mapRef.current.width) {
+  
+      let drawPath = new Path2D()
+      drawPath.arc((drawBorderHelperPos.current[0][0] - k) / mapRefs.mapScale.current, 
+      drawBorderHelperPos.current[0][1] / mapRefs.mapScale.current - mapRefs.mapOffsetY.current,
+        (mapRefs.mapScaleProperties.current.max - mapRefs.mapScale.current) / 1.75, 0, 2 * Math.PI)
 
-  const unmountEventListeners = () => {
-    if(!canvasRef.current) return
-    canvasRef.current.removeEventListener('keyup', keyUp)
-    canvasRef.current.removeEventListener('mousedown', mouseDown)
-    canvasRef.current.removeEventListener('mouseup', mouseUp)
-    canvasRef.current.removeEventListener('mousemove', mouseMove)
-    canvasRef.current.removeEventListener('wheel', mouseWheel)
-    document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }
-
-  const drawBorderStartPoint = (ctx: any, color: any) => {
-    ctx.fillStyle = color
-    let drawPath = new Path2D()
-    drawPath.arc(drawBorderHelperPos.current[0][0], drawBorderHelperPos.current[0][1],
-      (mapScaleProperties.current.max - mapScale.current) / 1.75, 0, 2 * Math.PI)
-
-    ctx.fill(drawPath)
-    drawPath.closePath()
-  }
-  const redrawMapWithCurrentBorders = () => {
-    let ctx: any = canvasRef.current.getContext('2d')
-
-    drawMap(mapOffsetX.current, mapOffsetY.current)
-    if (!drawBorderHelperPos.current.length) return
-
-    drawBorderStartPoint(ctx, drawBorderProperties.current.startPointColor)
-
-    ctx.strokeStyle = drawBorderProperties.current.borderLineColor
-    ctx.lineWidth = mapProperties.current.borderLineWidths/mapScale.current
-
-    let drawPath = new Path2D()
-    drawPath.moveTo(drawBorderHelperPos.current[0][0], drawBorderHelperPos.current[0][1])
-    for (let i = 1; i < drawBorderHelperPos.current.length; i++) {
-      drawPath.lineTo(drawBorderHelperPos.current[i][0], drawBorderHelperPos.current[i][1])
+      ctx.fill(drawPath)
+      drawPath.closePath()
     }
-    ctx.stroke(drawPath)
-    drawPath.closePath()
+  }
+  const redrawMapWithCurrentBorders = () => 
+  {
+    if (!drawBorderHelperPos.current.length) return
+    let ctx: any = mapRefs.canvasRef.current.getContext('2d')
+    ctx.strokeStyle = mapRefs.drawBorderProperties.current.borderLineColor
+    ctx.lineWidth = mapRefs.mapProperties.current.borderLineWidths/mapRefs.mapScale.current
+    
+    let coordX = (mapRefs.mapOffsetX.current * mapRefs.mapScale.current) % mapRefs.mapRef.current.width
+  
+    for (let k = coordX - mapRefs.mapRef.current.width; k <= coordX + mapRefs.mapRef.current.width; k += mapRefs.mapRef.current.width) 
+    {
+      let drawPath = new Path2D()
+
+      drawPath.moveTo((drawBorderHelperPos.current[0][0] - k) / mapRefs.mapScale.current, 
+      drawBorderHelperPos.current[0][1] / mapRefs.mapScale.current - mapRefs.mapOffsetY.current)
+      for (let i = 1; i < drawBorderHelperPos.current.length; i++) {
+        drawPath.lineTo((drawBorderHelperPos.current[i][0] - k) / mapRefs.mapScale.current, 
+        drawBorderHelperPos.current[i][1] / mapRefs.mapScale.current - mapRefs.mapOffsetY.current)
+      }
+      ctx.stroke(drawPath)
+      drawPath.closePath()
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+    }
+    drawBorderStartPoint(ctx)
   }
 
   const handleBordersModalOnClose = () => {
-    redrawMapWithCurrentBorders()
+    drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
     setSaveBordersModalShow(false)
   }
 
   const handleCityModalOnClose = () => {
 
+    let selectedCity = mapLoaderRef.current.selectedCity
     setSaveCityModalShow(false)
     selectedCity.current = false
   }
+  const getMousePos = (e: any) =>
+  {
+    let rect = mapRefs.canvasRef.current.getBoundingClientRect();
+    let mousePos = mapFncs.getMousePos(e)
+    mouseCoords.current = ([
+      (mousePos[0] - rect.left) * mapRefs.mapScale.current,
+      (mousePos[1] - rect.top) * mapRefs.mapScale.current
+    ])
+    return mousePos
+  }
+  const updateMapOffset = (offsetX: any, offsetY: any) =>
+  {
+    mapFncs.updateMapOffset(offsetX, offsetY)
+    let coordX = (offsetX * mapRefs.mapScale.current) % mapRefs.mapRef.current.width
+    coordX < 0 && (coordX += mapRefs.mapRef.current.width)
+
+    setCoords([coordX, offsetY * mapRefs.mapScale.current])
+  }
 
   const keyUp = (e: any) => {
-    if(!canvasRef.current) return
-    if(selectedCity.current) return
-    // to turn the key combinations into a beautiful tool menu instead (TO:DoO)
+
+    if(!mapRefs.gameCanvasRef.current) return
+    if(mapRefs.selectedCity.current) return
+
     if (e.code === 'KeyD') {
       isDrawingBorder.current = !isDrawingBorder.current
       if (!isDrawingBorder.current) {
-        drawMap(mapOffsetX.current, mapOffsetY.current)
+        //drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
         return
       }
       borders.current = []
       drawBorderHelperPos.current = []
+      //drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
       return
     }
     if (e.code === 'KeyZ') {
@@ -496,64 +308,61 @@ export default function CreateMapPage() {
 
       borders.current.pop()
       drawBorderHelperPos.current.pop()
-      redrawMapWithCurrentBorders()
+      //drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
       return
     }
   }
 
   const mouseDown = (e: any) => {
-    if(selectedCity.current) return
-
-    if ((isDrawingBorder.current || !canvasRef.current)) return
-    isDragging.current = true
-    mousePos.current = getMousePos(e)
+    mapRefs.isDragging.current = true
   }
 
   const mouseUp = (e: any) => {
-
-    if(!canvasRef.current) return
-    isDragging.current = false
-
-    mousePos.current = getMousePos(e)
-    let rect = canvasRef.current.getBoundingClientRect();
-    let coordX = (mapOffsetX.current * mapScale.current) % mapRef.current.width
-    coordX < 0 && (coordX += mapRef.current.width)
+    console.log("createMapPage mouseup")
+    mapRefs.isDragging.current = false
+    mapRefs.mousePos.current = getMousePos(e)
+    
+    let rect = mapRefs.canvasRef.current.getBoundingClientRect();
+    let coordX = (mapRefs.mapOffsetX.current * mapRefs.mapScale.current) % mapRefs.mapRef.current.width
+    coordX < 0 && (coordX += mapRefs.mapRef.current.width)
     let trueMousePosition = [
-      (mousePos.current[0] - rect.left) * mapScale.current + coordX,
-      (mousePos.current[1] - rect.top) * mapScale.current + mapOffsetY.current * mapScale.current
+      (mapRefs.mousePos.current[0] - rect.left) * mapRefs.mapScale.current + coordX,
+      (mapRefs.mousePos.current[1] - rect.top) * mapRefs.mapScale.current + mapRefs.mapOffsetY.current * mapRefs.mapScale.current
     ]
+    
+    let ctx: any = mapRefs.gameCanvasRef.current.getContext('2d')
+    let mapWidth: any = mapRefs.mapRef.current.width
+    if(!isDrawingBorder.current) {
 
-    if(selectedCity.current){
-      setFormCity( ({
-        cityName: formCityRef.current.cityName,
-        countryName: formCityRef.current.countryName,
-        pop_max: formCityRef.current.pop_max,
-        type: formCityRef.current.type,
-        point: trueMousePosition
-      }))
-      return
-    }
-
-    let ctx: any = canvasRef.current.getContext('2d')
-    let mapWidth: any = mapRef.current.width
-    if (!isDrawingBorder.current) {
+      if(mapRefs.selectedCity.current){
+        setFormCity( ({
+          cityName: formCityRef.current.cityName,
+          countryName: formCityRef.current.countryName,
+          pop_max: formCityRef.current.pop_max,
+          type: formCityRef.current.type,
+          point: [
+            trueMousePosition[0] % mapRefs.mapRef.current.width,
+            trueMousePosition[1]
+          ]
+        }))
+      }
       for (let k = coordX - mapWidth; k <= coordX + mapWidth; k += mapWidth) {
-        ctx.scale(1 / mapScale.current, 1 / mapScale.current)
-        ctx.translate(-mapWidth / 2 - k, -mapOffsetY.current * mapScale.current)
-        for (let i = 0; i < existingCitiesPathes.current.length; i++) {
+        ctx.scale(1 / mapRefs.mapScale.current, 1 / mapRefs.mapScale.current)
+        ctx.translate(-mapWidth / 2 - k, -mapRefs.mapOffsetY.current * mapRefs.mapScale.current)
+        for (let i = 0; i < mapRefs.existingCitiesPathes.current.length; i++) {
 
           if (ctx.isPointInPath(
-            existingCitiesPathes.current[i].path[0],
-            mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
+            mapRefs.existingCitiesPathes.current[i].path[0],
+            mapRefs.mousePos.current[0] - rect.left, mapRefs.mousePos.current[1] - rect.top
           )) {
-            selectedCity.current = existingCitiesPathes.current[i]
+            mapRefs.selectedCity.current = mapRefs.existingCitiesPathes.current[i]
             ctx.setTransform(1, 0, 0, 1, 0, 0)
             setFormCity( ({
-              cityName: selectedCity.current.name,
-              point: selectedCity.current.point,
-              pop_max: selectedCity.current.pop_max,
-              type: selectedCity.current.type,
-              countryName: selectedCity.current.countryName,
+              cityName: mapRefs.selectedCity.current.name,
+              point: mapRefs.selectedCity.current.point,
+              pop_max: mapRefs.selectedCity.current.pop_max,
+              type: mapRefs.selectedCity.current.type,
+              countryName: mapRefs.selectedCity.current.countryName,
             }))
 
             setCityModalError(null)
@@ -562,125 +371,93 @@ export default function CreateMapPage() {
             return
           }
         }
-        for (let i = 0; i < existingRiversPathes.current.length; i++) {
+        for (let i = 0; i < mapRefs.existingRiversPathes.current.length; i++) {
           if (ctx.isPointInStroke(
-            existingRiversPathes.current[i].path,
-            mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
+            mapRefs.existingRiversPathes.current[i].path,
+            mapRefs.mousePos.current[0] - rect.left, mapRefs.mousePos.current[1] - rect.top
           )) {
-            selectedRiver.current = existingRiversPathes.current[i]
-            console.log(selectedRiver.current)
-            drawMap(mapOffsetX.current, mapOffsetY.current)
+            mapRefs.selectedRiver.current = mapRefs.existingRiversPathes.current[i]
+            //drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
             ctx.setTransform(1, 0, 0, 1, 0, 0)
             return
           }
         }
-        let minCountryPopulation = Infinity, selCountryIndex = -1, currentSelectedCountry
-
-        for (let i = 0; i < existingBordersPathes.current.length; i++) {
-          if (ctx.isPointInPath(
-            existingBordersPathes.current[i].path[0],
-            mousePos.current[0] - rect.left, mousePos.current[1] - rect.top
-          )) {
-            currentSelectedCountry = existingBordersPathes.current[i]
-            if(totalCountryPopulation.current[currentSelectedCountry.countryName] < minCountryPopulation)
-            {
-                minCountryPopulation = totalCountryPopulation.current[currentSelectedCountry.countryName]
-                selCountryIndex = i
-            }
-          }
-        }
-        currentSelectedCountry && (selectedCountry.current = existingBordersPathes.current[selCountryIndex])
-        console.log(existingBordersPathes.current)
         ctx.setTransform(1, 0, 0, 1, 0, 0)
       }
-      drawMap(mapOffsetX.current, mapOffsetY.current)
+      
+      if(mapRefs.hoveredCountry.current)
+      {
+        console.log(mapRefs.hoveredCountry.current)
+        for (let i = 0; i < mapRefs.existingBordersPathes.current.length; i++) {
+          if(mapRefs.hoveredCountry.current.path[0] ==
+               mapRefs.existingBordersPathes.current[i].path[0]
+          ) {
+            mapRefs.selectedCountry.current = { ...mapRefs.hoveredCountry.current }
+            console.log(mapRefs.selectedCountry.current)
+            break
+          }
+        }
+      }
+      //drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
+
       return
     }
 
     if (!borders.current.length) {
-      drawBorderHelperPos.current = [[mousePos.current[0] - rect.left, mousePos.current[1] - rect.top]]
-
-      drawBorderStartPoint(ctx, drawBorderProperties.current.startPointColor)
+      drawBorderHelperPos.current.push(trueMousePosition)
       borders.current.push(trueMousePosition)
+      //drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
       return
     }
 
-    ctx.lineWidth = mapProperties.current.borderLineWidths/mapScale.current
+    ctx.lineWidth = mapRefs.mapProperties.current.borderLineWidths/mapRefs.mapScale.current
 
-    if (trueMousePosition[0] + mapScale.current * mapScaleProperties.current.max > borders.current[0][0] &&
-      trueMousePosition[0] - mapScale.current * mapScaleProperties.current.max < borders.current[0][0] &&
-      trueMousePosition[1] + mapScale.current * mapScaleProperties.current.max > borders.current[0][1] &&
-      trueMousePosition[1] - mapScale.current * mapScaleProperties.current.max < borders.current[0][1]) {
+    if (trueMousePosition[0] + mapRefs.mapScale.current * mapRefs.mapScaleProperties.current.max > 
+      borders.current[0][0] &&
+      trueMousePosition[0] - mapRefs.mapScale.current * mapRefs.mapScaleProperties.current.max < 
+      borders.current[0][0] &&
+      trueMousePosition[1] + mapRefs.mapScale.current * mapRefs.mapScaleProperties.current.max > 
+      borders.current[0][1] &&
+      trueMousePosition[1] - mapRefs.mapScale.current * mapRefs.mapScaleProperties.current.max < 
+      borders.current[0][1]) {
 
-      ctx.strokeStyle = drawBorderProperties.current.connectingLineColor
-      let drawPath = new Path2D()
-      drawPath.moveTo(
-        drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][0],
-        drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][1]
-      )
-      drawPath.lineTo(drawBorderHelperPos.current[0][0], drawBorderHelperPos.current[0][1])
-      ctx.stroke(drawPath)
-      drawPath.closePath()
-
+      
+      //drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
       setBordersModalError(null)
       setIsBorderSaveSuccess(false)
-      setFormName('')
+      setFormBorders({
+        selType: 'country',
+        selName: ''
+      })
       setSaveBordersModalShow(true)
       return
     }
-
-    ctx.strokeStyle = drawBorderProperties.current.borderLineColor
-    let drawPath = new Path2D()
-    drawPath.moveTo(
-      drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][0],
-      drawBorderHelperPos.current[drawBorderHelperPos.current.length - 1][1]
-    )
-    drawPath.lineTo(mousePos.current[0] - rect.left, mousePos.current[1] - rect.top)
-    ctx.stroke(drawPath)
-    drawPath.closePath()
-
     borders.current.push(trueMousePosition)
-    drawBorderHelperPos.current.push([mousePos.current[0] - rect.left, mousePos.current[1] - rect.top])
+    drawBorderHelperPos.current.push(trueMousePosition)
+    //drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
   }
 
   const mouseMove = (e: any) => {
-
-    if ((!isDragging.current)) return
-    if(selectedCity.current) return
-    let newPos = getMousePos(e)
-    localStorage.setItem('mapScale', String(mapScale.current))
-    localStorage.setItem('mapOffsetX', String(mapOffsetX.current));
-    localStorage.setItem('mapOffsetY', String(mapOffsetY.current));
-    updateMapOffset(mapOffsetX.current + (mousePos.current[0] - newPos[0]), mapOffsetY.current)
-
-    let mouseOffsetY = (mousePos.current[1] - newPos[1])
-    if (mapOffsetY.current + mouseOffsetY > 0 &&
-      mapOffsetY.current + mouseOffsetY < (mapRef.current.height / mapScale.current - canvasRef.current.height)) {
-      updateMapOffset(mapOffsetX.current, mapOffsetY.current + mouseOffsetY)
+    let newClientPos = []
+    if(e.touches)
+    {
+      newClientPos = [e.touches[0].clientX, e.touches[0].clientY]
+    } else {
+      newClientPos = [e.clientX, e.clientY]
     }
-    mousePos.current = newPos
-    drawMap(mapOffsetX.current, mapOffsetY.current)
-
+    movedMousePosition.current = newClientPos
   }
 
   const mouseWheel = (e: any) => {
 
     e.preventDefault()
-    e.stopPropagation()
-
-    if (isDrawingBorder.current || !canvasRef.current) return
-    if(selectedCity.current) return
-
-    localStorage.setItem('mapScale', String(mapScale.current))
-    localStorage.setItem('mapOffsetX', String(mapOffsetX.current));
-    localStorage.setItem('mapOffsetY', String(mapOffsetY.current));
-
-    let scaleProperties = mapScaleProperties.current;
+    
+    let scaleProperties = mapRefs.mapScaleProperties.current;
    
-    const rect = canvasRef.current.getBoundingClientRect();
+    const rect = mapRefs.gameCanvasRef.current.getBoundingClientRect();
     const mouseY = e.clientY - rect.top;
   
-    const centerY = canvasRef.current.height / 2;
+    const centerY = mapRefs.gameCanvasRef.current.height / 2;
     let offsetY = (mouseY - centerY);
   
     const limitY = 100;
@@ -689,322 +466,160 @@ export default function CreateMapPage() {
       console.log(offsetY);
     }
   
-    let newScale = mapScale.current;
-    let newOffsetX = mapOffsetX.current;
-    let newOffsetY = mapOffsetY.current;
+    let newScale = mapRefs.mapScale.current;
+    let newOffsetX = mapRefs.mapOffsetX.current;
+    let newOffsetY = mapRefs.mapOffsetY.current;
   
     if (e.deltaY > 0) {
       // Zoom in
-      if (mapScale.current * scaleProperties.step > scaleProperties.max) {
+      if (mapRefs.mapScale.current * scaleProperties.step > scaleProperties.max) {
         return;
       }
       newScale *= scaleProperties.step;
-      newOffsetX = mapOffsetX.current / scaleProperties.step;
-      newOffsetY = (mapOffsetY.current + offsetY) / scaleProperties.step;
+      newOffsetX = mapRefs.mapOffsetX.current / scaleProperties.step;
+      newOffsetY = (mapRefs.mapOffsetY.current + offsetY) / scaleProperties.step;
     } else {
       // Zoom out
-      if (mapScale.current / scaleProperties.step < scaleProperties.min) return;
+      if (mapRefs.mapScale.current / scaleProperties.step < scaleProperties.min) return;
       
       newScale /= scaleProperties.step;
-      newOffsetX = mapOffsetX.current * scaleProperties.step;
-      newOffsetY = (mapOffsetY.current + offsetY) * scaleProperties.step;
+      newOffsetX = mapRefs.mapOffsetX.current * scaleProperties.step;
+      newOffsetY = (mapRefs.mapOffsetY.current + offsetY) * scaleProperties.step;
     }
   
-    // Calculate the new vertical boundaries based on the new scale
-    const scaledImageHeight = mapRef.current.height / newScale;
-    const topBoundary = 0, bottomBoundary = scaledImageHeight - canvasRef.current.height;
+    const scaledImageHeight = mapRefs.mapRef.current.height / newScale;
+    const topBoundary = 0, bottomBoundary = scaledImageHeight - mapRefs.canvasRef.current.height;
   
-    // Adjust newOffsetY to ensure it stays within the vertical boundaries
     newOffsetY = Math.max(topBoundary, Math.min(newOffsetY, bottomBoundary));
   
-    // Update map scale and offset
-    mapScale.current = newScale;
+    mapRefs.mapScale.current = newScale;
     updateMapOffset(newOffsetX, newOffsetY);
-    drawMap(newOffsetX, newOffsetY);
-  }
-
-  const getMousePos = (e: any) => {
-    let rect = canvasRef.current.getBoundingClientRect();
-    setMouseCoords([
-      (e.clientX - rect.left) * mapScale.current,
-      (e.clientY - rect.top) * mapScale.current
-    ])
-    return [e.clientX, e.clientY]
-  };
-
-  const updateMapOffset = (offsetX: any, offsetY: any) => {
-
-    mapOffsetX.current = offsetX
-    mapOffsetY.current = offsetY
-    let coordX = (offsetX * mapScale.current) % mapRef.current.width
-    coordX < 0 && (coordX += mapRef.current.width)
-
-    mapOffsetX.current = coordX / mapScale.current
-    setCoords([coordX, offsetY * mapScale.current])
+    requestAnimationFrame(() => mapFncs.renderMapObjects(mapRefs.mapOffsetX.current,mapRefs.mapOffsetY.current));
+    requestAnimationFrame(() => mapFncs.drawMapImage(mapRefs.mapOffsetX.current,mapRefs.mapOffsetY.current));
 
   }
-  const getStarPathFromParams = (cx: any,cy: any, spikes: any, outerRadius: any,innerRadius: any) => 
-  {
-    let rot = Math.PI/2*3;
-    let x = cx, y = cy;
-    let step = Math.PI/spikes;
-    
-    let starPath: Path2D = new Path2D()
-    starPath.moveTo(cx,cy-outerRadius)
-    for(let i = 0; i < spikes; i++)
+  const updateMap = () => {
+    if(!isMountedRef.current) return
+
+    let newPos = movedMousePosition.current
+    let mapWidth: any = mapRefs.mapRef.current.width
+    let ctx: any = mapRefs.gameCanvasRef.current.getContext('2d')
+    const rect = mapRefs.gameCanvasRef.current.getBoundingClientRect();
+    let coordX = (mapRefs.mapOffsetX.current * mapRefs.mapScale.current) % mapRefs.mapRef.current.width
+   
+    if(mapRefs.isDragging.current)
     {
-      x = cx + Math.cos(rot)*outerRadius;
-      y = cy + Math.sin(rot)*outerRadius;
-      starPath.lineTo(x,y)
-      rot += step
+      updateMapOffset(mapRefs.mapOffsetX.current + (mapRefs.mousePos.current[0] - newPos[0]), 
+        mapRefs.mapOffsetY.current)
 
-      x = cx + Math.cos(rot)*innerRadius;
-      y = cy + Math.sin(rot)*innerRadius;
-      starPath.lineTo(x,y)
-      rot += step
-    }
-    starPath.lineTo(cx, cy - outerRadius);
-    return starPath
-  }
-  const drawMap: any = (offsetX: any, offsetY: any) => {
-
-    if(!canvasRef.current) return
-    canvasRef.current.width = window.innerWidth
-    canvasRef.current.height = window.innerHeight
-    let ctx: any = canvasRef.current.getContext('2d')
-    
-    let mapImage: any = mapRef.current
-
-    if (offsetX * mapScale.current >= mapImage.width ||
-      offsetX * mapScale.current <= -mapImage.width) offsetX %= mapImage.width / mapScale.current
-    if (offsetX < 0) offsetX += mapImage.width / mapScale.current
-
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
-
-    let clippedPath: Path2D = new Path2D()
-    clippedPath.rect(0, 0, canvasRef.current.width, canvasRef.current.height)
-    ctx.clip(clippedPath)
-    clippedPath.closePath()
-
-    ctx.drawImage(mapImage,
-      offsetX * mapScale.current, offsetY * mapScale.current,
-      canvasRef.current.width * mapScale.current, canvasRef.current.height * mapScale.current,
-      0, 0, canvasRef.current.width, canvasRef.current.height)
-
-    if (offsetX > mapImage.width / mapScale.current - canvasRef.current.width) {
-      ctx.drawImage(mapImage,
-        0, offsetY * mapScale.current,
-        offsetX * mapScale.current - mapImage.width + canvasRef.current.width * mapScale.current,
-        canvasRef.current.height * mapScale.current,
-        mapImage.width / mapScale.current - offsetX - 0.5, 0,
-        offsetX - mapImage.width / mapScale.current + canvasRef.current.width, canvasRef.current.height)
-    }
-    else if (offsetX < 0) {
-      ctx.drawImage(mapImage,
-        mapImage.width + offsetX * mapScale.current, offsetY * mapScale.current,
-        -offsetX * mapScale.current, canvasRef.current.height * mapScale.current,
-        0, 0, -offsetX, canvasRef.current.height)
-    }
-    //existingRiversPathes.current = []
-    //existingBordersPathes.current = []
-    //existingCitiesPathes.current = []
-    let drawPath: Path2D = new Path2D()
-    let coordX = (offsetX * mapScale.current) % mapImage.width
-
-    for (let k = coordX - mapImage.width; k <= coordX + mapImage.width; k += mapImage.width) {
-      if (existingBordersPathes.current.length) {
-        ctx.fillStyle = drawBorderProperties.current.borderShapeFillColor
-        ctx.lineWidth = mapProperties.current.borderLineWidths
-        ctx.strokeStyle = drawBorderProperties.current.borderShapeStrokeColor
-        for (let i = 0; i < existingBordersPathes.current.length; i++) {
-          let drawBorderPath: Path2D = new Path2D(existingBordersPathes.current[i].path[0])
-          ctx.scale(1 / mapScale.current, 1 / mapScale.current)
-          ctx.translate(-mapImage.width / 2 - k, -offsetY * mapScale.current)
-          //console.log( existingBordersPathes.current[i])
-          if (selectedCountry.current &&
-            selectedCountry.current.countryName === existingBordersPathes.current[i].countryName) {
-            ctx.fillStyle = "#ff00001b"
-            ctx.fill(drawBorderPath)
-            ctx.fillStyle = drawBorderProperties.current.borderShapeFillColor
-          }
-          ctx.stroke(drawBorderPath)
-          //existingBordersPathes.current[i].path = drawBorderPath
-          ctx.setTransform(1, 0, 0, 1, 0, 0)
-        }
-      } else {
-        for (let ctryIndex = 0; ctryIndex < existingBorders.current.length; ctryIndex++) {
-          drawPath = new Path2D()
-          if (existingBorders.current[ctryIndex].point.length) {
-            drawPath.moveTo(
-              ((existingBorders.current[ctryIndex].point[0][0] - k)) / mapScale.current,
-              (existingBorders.current[ctryIndex].point[0][1] / mapScale.current - offsetY)
-            )
-          }
-          for (let i = 1; i < existingBorders.current[ctryIndex].point.length; i++) {
-          
-            drawPath.lineTo(
-              ((existingBorders.current[ctryIndex].point[i][0] - k)) / mapScale.current,
-              (existingBorders.current[ctryIndex].point[i][1] / mapScale.current - offsetY)
-            )
-          }
-          existingBordersPathes.current.push({
-            countryName: existingBorders.current[ctryIndex].countryName,
-            path: [drawPath]
-          })
-        }
+      let mouseOffsetY = (mapRefs.mousePos.current[1] - newPos[1])
+      if (mapRefs.mapOffsetY.current + mouseOffsetY > 0 &&
+        mapRefs.mapOffsetY.current + mouseOffsetY < 
+        (mapRefs.mapRef.current.height / mapRefs.mapScale.current - mapRefs.canvasRef.current.height)) {
+        updateMapOffset(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current + mouseOffsetY)
       }
-
-      if (existingRiversPathes.current.length) {
-
-        ctx.lineWidth = mapProperties.current.borderLineWidths
-        for (let i = 0; i < existingRiversPathes.current.length; i++) {
-          let drawBorderPath: Path2D = new Path2D(existingRiversPathes.current[i].path)
-          ctx.scale(1 / mapScale.current, 1 / mapScale.current)
-          ctx.translate(-mapImage.width / 2 - k, -offsetY * mapScale.current)
-          if (selectedRiver.current.name === existingRiversPathes.current[i].name) {
-            ctx.strokeStyle = drawBorderProperties.current.waterBorderShapeFillColor
-          } else {
-            ctx.strokeStyle = drawBorderProperties.current.waterBorderShapeStrokeColor
-          }
-          ctx.stroke(drawBorderPath)
-          //existingRiversPathes.current[i].path = drawBorderPath
-          ctx.setTransform(1, 0, 0, 1, 0, 0)
-        }
-      } else {
-        
-        for (let rivIndex = 0; rivIndex < existingRiverBorders.current.length; rivIndex++) {
-          drawPath = new Path2D()
-          if (existingRiverBorders.current[rivIndex].point.length) {
-            drawPath.moveTo(
-              ((existingRiverBorders.current[rivIndex].point[0][0] - k)) / mapScale.current,
-              (existingRiverBorders.current[rivIndex].point[0][1] / mapScale.current - offsetY)
-            )
-          }
-          for (let i = 1; i < existingRiverBorders.current[rivIndex].point.length; i++) {
-            drawPath.lineTo(
-              ((existingRiverBorders.current[rivIndex].point[i][0] - k)) / mapScale.current,
-              (existingRiverBorders.current[rivIndex].point[i][1] / mapScale.current - offsetY))
-          }
-          
-          existingRiversPathes.current.push({
-            name: existingRiverBorders.current[rivIndex].name,
-            path: drawPath
-          })
-        }
-      }
-      if(existingCitiesPathes.current.length)
+      mapRefs.mousePos.current = newPos
+    } else {
+      let offSelectedCounter = 0
+      for (let k = coordX - mapWidth; k <= coordX + mapWidth; k += mapWidth) 
       {
-        ctx.lineWidth = mapProperties.current.borderLineWidths
-        for (let i = 0; i < existingCitiesPathes.current.length; i++) {
-          ctx.scale(1 / mapScale.current, 1 / mapScale.current)
-          ctx.translate(-mapImage.width/2 - k, -offsetY * mapScale.current)
-         
-
-          if(existingCitiesPathes.current[i].type)
+        let minCountryPopulation = Infinity, currentHoveredCountry, hovCountryIndex = -1
+        ctx.scale(1 / mapRefs.mapScale.current, 1 / mapRefs.mapScale.current)
+        ctx.translate(-mapWidth / 2 - k, -mapRefs.mapOffsetY.current * mapRefs.mapScale.current)
+        for(let i = 0; i < mapRefs.existingBordersPathes.current.length; i++)
+        {
+          if(ctx.isPointInPath(mapRefs.existingBordersPathes.current[i].path[0],
+              newPos[0] - rect.left, newPos[1] - rect.top ))
           {
-            let starBorderPath: Path2D = new Path2D(existingCitiesPathes.current[i].path[1])
-            ctx.fillStyle = mapProperties.current.capitalCityStrokeColor
-            ctx.fill(starBorderPath)
-          }
-          let cityBorderPath: Path2D = new Path2D(existingCitiesPathes.current[i].path[0])
-          ctx.strokeStyle = mapProperties.current.cityStrokeColor
-          ctx.stroke(cityBorderPath)
-          ctx.fillStyle = mapProperties.current.cityStrokeColor
-          ctx.fill(cityBorderPath);
-
-          ctx.setTransform(1, 0, 0, 1, 0, 0)
-
-          /// to redact
-          let unitsReinf = Math.ceil(
-            existingCitiesPathes.current[i].pop_max / mapProperties.current.unitsInCityPerPopulation
-          )
-          if (unitsReinf > mapProperties.current.maxDefaultUnitsInCity) {
-            unitsReinf = mapProperties.current.maxDefaultUnitsInCity
-          }
-          ctx.strokeStyle = 'white'
-          ctx.font = `${mapProperties.current.cityRadius / mapScale.current}px Verdana`
-          ctx.strokeText(unitsReinf,
-            ((existingCitiesPathes.current[i].point[0] - k) - 
-              unitsReinf.toString().length * mapProperties.current.cityRadius/3) / mapScale.current,
-            ((existingCitiesPathes.current[i].point[1] + 
-              mapProperties.current.cityRadius/3) / mapScale.current - offsetY)
-          )
-          ctx.stroke()
-          ///
-        }
-      } else {
-        for (let i = 0; i < existingCities.current.length; i++) {
-          let cityCenterPoint = [
-            ((existingCities.current[i].point[0] - k)) / mapScale.current,
-            (existingCities.current[i].point[1] / mapScale.current - offsetY)
-          ]
-          let cityPath = new Path2D()
-          let starPath = new Path2D()
-          if(existingCities.current[i].type)
-          {
-            starPath.addPath(getStarPathFromParams(
-              cityCenterPoint[0],
-              cityCenterPoint[1],
-              5, mapProperties.current.capitalCityRadius*2 / mapScale.current, 
-              mapProperties.current.capitalCityRadius / mapScale.current
-            ))
-            cityPath.arc(
-              cityCenterPoint[0], cityCenterPoint[1],
-              mapProperties.current.capitalCityRadius / mapScale.current, 0, 2 * Math.PI
-            )
-            starPath.closePath()
+            currentHoveredCountry = mapRefs.existingBordersPathes.current[i]
+            if(mapRefs.totalCountryPopulation.current[currentHoveredCountry.countryName] < minCountryPopulation)
+            {
+                minCountryPopulation = mapRefs.totalCountryPopulation.current[currentHoveredCountry.countryName]
+                hovCountryIndex = i
+            }
           } else {
-            cityPath.arc(
-              cityCenterPoint[0], cityCenterPoint[1],
-              mapProperties.current.cityRadius / mapScale.current, 0, 2 * Math.PI
-            )
+            offSelectedCounter++
           }
-          cityPath.closePath()
-          
-          existingCitiesPathes.current.push({...existingCities.current[i], path: [cityPath, starPath]})
         }
+        
+        if(currentHoveredCountry)
+        {
+          mapRefs.hoveredCountry.current = mapRefs.existingBordersPathes.current[hovCountryIndex]
+        } 
+        else if (offSelectedCounter == mapRefs.existingBordersPathes.current.length) 
+        {
+          mapRefs.hoveredCountry.current = false
+        }
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
       }
     }
-
-    return
+    drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
+    requestAnimationFrame(updateMap)
   }
+  const drawMap = (offsetX: any, offsetY: any) => 
+  {
+    mapFncs.renderMapObjects(offsetX, offsetY)
+    mapFncs.drawMapImage(offsetX, offsetY)
+    redrawMapWithCurrentBorders()
+    //mapFncs.drawMapImage(offsetX, offsetY)
+    /*
+    let mapWidth: any = mapRefs.mapRef.current.width
+    let ctx: any = mapRefs.canvasRef.current.getContext('2d')
+    let rect = mapRefs.canvasRef.current.getBoundingClientRect();
+    let coordX = (mapRefs.mapOffsetX.current * mapRefs.mapScale.current) % mapRefs.mapRef.current.width
 
-  const tick = useCallback(() => {
-    requestIdRef.current = requestAnimationFrame(tick)
-  }, []);
-
-  
-  if (error) return <MapsPage />
-
+    for (let k = coordX - mapWidth; k <= coordX + mapWidth; k += mapWidth) {
+      let minCountryPopulation = Infinity, currentHoveredCountry, hovCountryIndex = -1
+      ctx.scale(1 / mapRefs.mapScale.current, 1 / mapRefs.mapScale.current)
+      ctx.translate(-mapWidth / 2 - k, -mapRefs.mapOffsetY.current * mapRefs.mapScale.current)
+      for(let i = 0; i < mapRefs.existingBordersPathes.current.length; i++)
+      {
+        if (ctx.isPointInPath(
+          mapRefs.existingBordersPathes.current[i].path[0],
+          (mapRefs.mousePos.current[0] - rect.left), mapRefs.mousePos.current[1] - rect.top
+        )) {
+        currentHoveredCountry = mapRefs.existingBordersPathes.current[i]
+          if(mapRefs.totalCountryPopulation.current[currentHoveredCountry.countryName] < minCountryPopulation)
+          {
+              minCountryPopulation = mapRefs.totalCountryPopulation.current[currentHoveredCountry.countryName]
+              hovCountryIndex = i
+          }
+        }
+      } 
+      currentHoveredCountry && (mapRefs.hoveredCountry.current = mapRefs.existingBordersPathes.current[hovCountryIndex])
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+    }*/
+  }
   return (
     <div className="createMapPage">
-      <p className="unselectable" style={{ color: 'white', position: 'absolute', fontSize: '16px' }}>
+      {(mapRefs && coords.length > 0) && <>
+      <p className="unselectable" 
+        style={{ 
+          color: 'white', 
+          position: 'absolute', 
+          fontSize: '16px',
+          pointerEvents: 'none',
+        }}>
         coords({`${coords[0]}, ${coords[1]}`}) --
-        mouseCoords({`${mouseCoords[0]}, ${mouseCoords[1]}`}) --
-        realClick({`${(mouseCoords[0] + coords[0]) % mapRef.current.width}, 
-                    ${mouseCoords[1] + coords[1]}`}) --
-        zoom({`${mapScale.current}`})
-      </p>
-      <canvas tabIndex={1} ref={canvasRef} style={{ display: 'block' }} id='canvas-id' />
+        mouseCoords({`${mouseCoords.current[0]}, ${mouseCoords.current[1]}`}) --
+        realClick({`${(mouseCoords.current[0] + coords[0]) % mapRefs.mapRef.current.width}, 
+                    ${mouseCoords.current[1] + coords[1]}`}) --
+        zoom({`${mapRefs.mapScale.current}`})
+      </p></>}
       
-      <Modal show={loadingModalShow} onHide={closeLoadingModal} backdrop="static" keyboard={false}>
-        <Modal.Header style={modalProperties.current}>
-          <Modal.Title>{loadingModalTitle}</Modal.Title>
-          <Button  className={'btn-close btn-close-white'}
-              style={{ marginLeft: '15px', marginTop: '10px', padding: 0 }}  onClick={closeLoadingModal}>
-          </Button>
-        </Modal.Header>
-      </Modal>
+      <MapLoader ref={mapLoaderRef} mapNameProp={mapNameParam}/>
+      {mapRefs && <>
       <Modal
         show={saveBordersModalShow}
         onHide={handleBordersModalOnClose}
-        backdrop="static"
+        dialogAs={DraggableModalDialog}
+        backdrop="false"
         keyboard={false}
+        
       >
-        <Draggable>
           {isBorderSaveSuccess || bordersModalError ?
             <div>
-              <Modal.Header style={modalProperties.current}>
+              <Modal.Header style={mapRefs.modalProperties.current}>
                 <Modal.Title>
                   {bordersModalError ? bordersModalError : 'Successfully saved borders!'}
                 </Modal.Title>
@@ -1016,36 +631,37 @@ export default function CreateMapPage() {
             </div>
             :
             <div>
-              <Modal.Header style={modalProperties.current}>
+              <Modal.Header style={mapRefs.modalProperties.current}>
                 <Modal.Title>Save currently placed borders</Modal.Title>
                 <Button className={'btn-close btn-close-white'}
                   style={{ marginLeft: '15px', marginTop: '10px', padding: 0 }}
                   onClick={handleBordersModalOnClose}></Button>
               </Modal.Header>
-              <Modal.Body style={modalProperties.current}>
+              <Modal.Body style={mapRefs.modalProperties.current}>
                 <Form.Group >
                   <Form.Label>
                     Select selection type [country or river]
                   </Form.Label>
-                  <Form.Select size='lg' onChange={handleSelectChange} value={formSelectName}
+                  <Form.Select size='lg' name = "selType" onChange={handleFormBorders} value={formBorders.selType}
                     style={{ textAlign: 'center' }}>
                     <option value='country'>Country</option>
                     <option value='river'>River</option>
+                  
                   </Form.Select>
                 </Form.Group >
               </Modal.Body>
-              <Modal.Body style={modalProperties.current}>
+              <Modal.Body style={mapRefs.modalProperties.current}>
                 <Form.Group >
                   <Form.Label>
                     Enter a selection name [alphabetic,&nbsp;
                     {formProperties.current.countryNameCharsLimit[0]} -&nbsp;
                     {formProperties.current.countryNameCharsLimit[1]} chars]
                   </Form.Label>
-                  <Form.Control type="text" onChange={handleFormNameChange}
-                    value={formName} placeholder="" />
+                  <Form.Control type="text" name = "selName" onChange={handleFormBorders}
+                    value={formBorders.selName} placeholder="" />
                 </Form.Group>
               </Modal.Body>
-              <Modal.Footer style={modalProperties.current}>
+              <Modal.Footer style={mapRefs.modalProperties.current}>
                 <Button variant="primary"
                   style={{ marginRight: '15px' }}
                   onClick={handleBordersSave}>
@@ -1055,7 +671,6 @@ export default function CreateMapPage() {
               </Modal.Footer>
             </div>
           }
-        </Draggable>
       </Modal>
 
       <Modal
@@ -1066,35 +681,8 @@ export default function CreateMapPage() {
       >
         <Draggable>
           <div>
-            <Modal.Header style={modalProperties.current}>
+            <Modal.Header style={mapRefs.modalProperties.current}>
               <Modal.Title>Saving borders, please wait..</Modal.Title>
-            </Modal.Header>
-          </div>
-        </Draggable>
-      </Modal>
-
-      <Modal
-        show={loadingExistingBorders}
-        backdrop="static"
-        keyboard={false}
-      >
-        <Draggable>
-          <div>
-            <Modal.Header style={modalProperties.current}>
-              <Modal.Title>Loading borders ...</Modal.Title>
-            </Modal.Header>
-          </div>
-        </Draggable>
-      </Modal>
-      <Modal
-        show={loadingExistingRivers}
-        backdrop="static"
-        keyboard={false}
-      >
-        <Draggable>
-          <div>
-            <Modal.Header style={modalProperties.current}>
-              <Modal.Title>Loading rivers ...</Modal.Title>
             </Modal.Header>
           </div>
         </Draggable>
@@ -1112,25 +700,28 @@ export default function CreateMapPage() {
         <div>
           {isCitySaveSuccess || cityModalError ?
             <div style={{ pointerEvents: 'auto' }}>
-              <Modal.Header style={modalProperties.current}>
+              <Modal.Header style={mapRefs.modalProperties.current}>
                 <Modal.Title>
                   {cityModalError ? cityModalError : 'Successfully saved city!'}
                 </Modal.Title>
                 <Button className={'btn-close btn-close-white'}
                   style={{ marginLeft: '15px', marginTop: '10px', padding: 0 }}
                   onClick={handleCityModalOnClose}
+                  onTouchEnd={handleCityModalOnClose}
                 ></Button>
               </Modal.Header>
             </div>
             :
             <div style={{ pointerEvents: 'auto' }}>
-              <Modal.Header style={modalProperties.current}>
+              <Modal.Header style={mapRefs.modalProperties.current}>
                 <Modal.Title>Edit city properties</Modal.Title>
                 <Button className={'btn-close btn-close-white'}
                   style={{ marginLeft: '15px', marginTop: '10px', padding: 0 }}
-                  onClick={handleCityModalOnClose}></Button>
+                  onClick={handleCityModalOnClose}
+                  onTouchEnd={handleCityModalOnClose}>
+                </Button>
               </Modal.Header>
-              <Modal.Body style={modalProperties.current}>
+              <Modal.Body style={mapRefs.modalProperties.current}>
                 <Form.Group >
                   <Form.Label>
                     The name of the city 
@@ -1138,13 +729,13 @@ export default function CreateMapPage() {
                   <Form.Control type="text" onChange={handleFormCityChange} name="cityName"
                     value={formCity.cityName} 
                     style={{
-                      backgroundColor: (formCity.cityName !== selectedCity.current.name) 
+                      backgroundColor: (formCity.cityName !== mapRefs.selectedCity.current.name) 
                           ? 'darkseagreen' : 'white'
                     }}/>
                 </Form.Group >
               </Modal.Body>
               
-              <Modal.Body style={modalProperties.current}>
+              <Modal.Body style={mapRefs.modalProperties.current}>
                 <Form.Group >
                   <Form.Label>
                     The type of the city
@@ -1153,7 +744,7 @@ export default function CreateMapPage() {
                   value={formCity.type} 
                   style={{ 
                     textAlign: 'center',
-                    backgroundColor: ((formCity.type === 'true' || formCity.type) !== selectedCity.current.type) 
+                    backgroundColor: ((formCity.type === 'true' || formCity.type) !== mapRefs.selectedCity.current.type) 
                     ? 'darkseagreen' : 'white' 
                   }}>
                       <option value={"false"}>Normal city</option>
@@ -1161,20 +752,21 @@ export default function CreateMapPage() {
                   </Form.Select>
                 </Form.Group >
               </Modal.Body>
-              <Modal.Body style={modalProperties.current}>
+              <Modal.Body style={mapRefs.modalProperties.current}>
                 <Form.Group >
                   <Form.Label>
-                    City coords [click on map - [{selectedCity.current.point[0].toFixed(4)},{selectedCity.current.point[1].toFixed(4)}]]
+                    City coords [click on map - [{mapRefs.selectedCity.current.point[0].toFixed(4)},
+                    {mapRefs.selectedCity.current.point[1].toFixed(4)}]]
                   </Form.Label>
                   <Form.Control type="text" 
                     value={[formCity.point[0].toFixed(4), formCity.point[1].toFixed(4)]} 
                     style={{
-                      backgroundColor: (formCity.point != selectedCity.current.point) 
+                      backgroundColor: (formCity.point != mapRefs.selectedCity.current.point) 
                           ? 'darkseagreen' : 'white' 
                     }} disabled/>
                 </Form.Group >
               </Modal.Body>
-              <Modal.Body style={modalProperties.current}>
+              <Modal.Body style={mapRefs.modalProperties.current}>
                 <Form.Group >
                   <Form.Label>
                     The population of the city
@@ -1183,12 +775,12 @@ export default function CreateMapPage() {
                   <Form.Control type="number" onChange={handleFormCityChange} name="pop_max"
                     value={formCity.pop_max} 
                     style={{
-                      backgroundColor: (formCity.pop_max != selectedCity.current.pop_max) 
+                      backgroundColor: (formCity.pop_max != mapRefs.selectedCity.current.pop_max) 
                           ? 'darkseagreen' : 'white' 
                     }}/>
                 </Form.Group >
               </Modal.Body>
-              <Modal.Body style={modalProperties.current}>
+              <Modal.Body style={mapRefs.modalProperties.current}>
                 <Form.Group >
                   <Form.Label>
                     The country name of the city
@@ -1198,10 +790,10 @@ export default function CreateMapPage() {
                     value={formCity.countryName}
                     style={{ 
                       textAlign: 'center',
-                      backgroundColor: (formCity.countryName != selectedCity.current.countryName) 
+                      backgroundColor: (formCity.countryName != mapRefs.selectedCity.current.countryName) 
                           ? 'darkseagreen' : 'white' 
                     }}>
-                     {existingCountries.current.map((country: any) => {
+                     {mapRefs.existingCountries.current.map((country: any) => {
                         return (
                             <option value={country.name}>{country.name}</option> 
                         )
@@ -1209,17 +801,19 @@ export default function CreateMapPage() {
                   </Form.Select>
                 </Form.Group >
               </Modal.Body>
-              <Modal.Footer style={modalProperties.current}>
+              <Modal.Footer style={mapRefs.modalProperties.current}>
                 <Button variant="primary"
                   style={{ marginRight: '15px' }}
-                  onClick={handleCitySave}>
+                  onClick={handleCitySave}
+                  onTouchEnd={handleCitySave}>
                   Save city properties
                 </Button>
               </Modal.Footer>
             </div>
           }
           </div>
-        </Modal>}
+        </Modal>
+      }</>}
     </div>
   )
 }

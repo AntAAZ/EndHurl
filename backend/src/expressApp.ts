@@ -7,30 +7,33 @@ import session from 'express-session'
 import flash from 'connect-flash'
 import path from 'path'
 
-import LoginRoute from './routes/LoginRoute';
-import RegisterRoute from './routes/RegisterRoute';
-import UserRoute from './routes/UserRoute'
+import LoginRoute from './routes/users/LoginRoute';
+import RegisterRoute from './routes/users/RegisterRoute';
+import UserRoute from './routes/users/UserRoute'
 import dotenv from 'dotenv'
 
 import MongoStore from 'connect-mongo';
-import LogoutRoute from './routes/LogoutRoute'
-import UpdateRoute from './routes/UpdateRoute'
-import AvatarUploadRoute from './routes/AvatarUploadRoute'
-import SetBioRoute from './routes/SetBioRoute'
-import SetLocRoute from './routes/SetLocRoute'
-import AvatarDeleteRoute from './routes/AvatarDeleteRoute'
-import BorderUploadRoute from './routes/BorderUploadRoute'
-import BorderGetRoute from './routes/BorderGetRoute'
-import CountryGetRoute from './routes/CountryGetRoute'
-import WaterBorderGetRoute from './routes/WaterBorderGetRoute'
-import WaterBorderUploadRoute from './routes/WaterBorderUploadRoute'
+import LogoutRoute from './routes/users/LogoutRoute'
+import UpdateRoute from './routes/users/UpdateRoute'
+import AvatarUploadRoute from './routes/avatars/AvatarUploadRoute'
+import SetBioRoute from './routes/users/SetBioRoute'
+import SetLocRoute from './routes/users/SetLocRoute'
+import AvatarDeleteRoute from './routes/avatars/AvatarDeleteRoute'
+import BorderUploadRoute from './routes/borders/BorderUploadRoute'
+import BorderGetRoute from './routes/borders/BorderGetRoute'
+import CountryGetRoute from './routes/countries/CountryGetRoute'
+import WaterBorderGetRoute from './routes/rivers/WaterBorderGetRoute'
+import WaterBorderUploadRoute from './routes/rivers/WaterBorderUploadRoute'
 //import UuidGetRoute from './routes/UuidGetRoute'
-import NaturalEarthGetRoute from './routes/NaturalEarthGetRoute'
-import NaturalEarthGetWatersRoute from './routes/NaturalEarthGetWatersRoute'
-import RiverGetRoute from './routes/RiverGetRoute'
-import NaturalEarthGetCityRoute from './routes/NaturalEarthGetCityRoute'
-import CityGetRoute from './routes/CityGetRoute'
-import CityUploadRoute from './routes/CityUploadRoute'
+import NaturalEarthGetRoute from './routes/borders/NaturalEarthGetRoute'
+import NaturalEarthGetWatersRoute from './routes/rivers/NaturalEarthGetWatersRoute'
+import RiverGetRoute from './routes/rivers/RiverGetRoute'
+import NaturalEarthGetCityRoute from './routes/cities/NaturalEarthGetCityRoute'
+import CityGetRoute from './routes/cities/CityGetRoute'
+import CityUploadRoute from './routes/cities/CityUploadRoute'
+import AddMapRoute from './routes/maps/AddMapRoute'
+import MapGetRoute from './routes/maps/MapGetRoute'
+import MapGetAllRoute from './routes/maps/MapGetAllRoute'
 class expressApp
 {
     private express: express.Application;
@@ -90,7 +93,10 @@ class expressApp
             NaturalEarthGetCityRoute,
             CityGetRoute,
             CityUploadRoute,
-            NaturalEarthGetWatersRoute
+            NaturalEarthGetWatersRoute,
+            MapGetRoute,
+            MapGetAllRoute,
+            AddMapRoute
         ]);
         this.express.use('/', router);
         this.express.use('/public/', express.static(path.join(__dirname, '../public')))

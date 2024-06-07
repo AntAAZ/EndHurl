@@ -25,7 +25,9 @@ export default function NavBar()
                     <Nav.Link as={Link} to="/games">Games</Nav.Link>
                     <Nav.Link as={Link} to="/maps">Maps</Nav.Link>
                     <Nav.Link as={Link} to="/players">Players</Nav.Link>
-                    <Nav.Link as={Link} to="/discord"><Discord color="rgba(103, 166, 214, 0.8)" size="28px"/></Nav.Link>
+                    {
+                    //<Nav.Link as={Link} to="/discord"><Discord color="rgba(103, 166, 214, 0.8)" size="28px"/></Nav.Link>
+                    }
                 </Nav>
                 {error ? 
                     <Nav style={{paddingRight: '20px'}}>
@@ -35,12 +37,14 @@ export default function NavBar()
                     :
                     <>
                     <Nav>
+                        {/*
                         <Nav.Link>
                             <EnvelopeFill color="gray"/> 
                         </Nav.Link>
                         <Nav.Link>
                             <BellFill color="orange"/>
                         </Nav.Link>
+                        */}
                         <NavDropdown title={user.username} align="end" id="collasible-nav-dropdown">
                             <NavDropdown.Item as={Link} to={`/players/${user.username}`}>Profile</NavDropdown.Item>
                             <NavDropdown.Item as={Link} to="/customization">Customize</NavDropdown.Item>
