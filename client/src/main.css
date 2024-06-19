@@ -2,7 +2,6 @@
     margin: 0;
     padding: 0;
 }
-
 :root {
     --authAlertBorder: 0;
     --authAlertTextColor: black;
@@ -74,12 +73,10 @@ textarea {
     font-size: 130% !important;
     text-align: center;
 }
-
 .modal-dialog .modal-content {
     background-color: transparent;
     border: 0;
 }
-
 .form-label {
     margin-bottom: 0;
 }
@@ -89,31 +86,59 @@ textarea {
     padding-top: 10px;
     padding-bottom: 10px;
 }
-
 .registerPage {
     background-color: var(--authPageBackgroundColor);
     padding-top: 10px;
     padding-bottom: 10px;
 }
-
 .mapPage {
     background-color: var(--mapPageBackgroundColor);
     padding-bottom: 10px;
 }
-
 .mapRulesDisclaimer {
     color: rgb(156, 156, 156);
 }
 .captcha {
     margin-top: 10px;
 }
-
 .alert {
     font-size: 150%;
     text-align: center;
     padding-bottom: 0;
     margin-top: 5px;
 }
+@keyframes fadeOutDown {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(200%);
+    }
+}
+
+.alert-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    position: absolute;
+    top: 10px;
+    z-index: 1050; 
+    pointer-events: none; 
+}
+
+.alert-container .alert {
+    position: absolute;
+    pointer-events: all; /* Allow interactions with the alerts */
+    transition: opacity 1s, transform 1s; /* Smooth transition for immediate dismiss */
+}
+
+.alert.fade-out {
+    animation: fadeOutDown 5s forwards;
+}
+
 .navbar .dropdown-menu {
     min-width: 0;
     text-align: center;

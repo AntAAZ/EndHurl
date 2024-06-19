@@ -4,30 +4,23 @@ import bcrypt from 'bcryptjs'
 import User from '../../models/User';
 
 class UpdateRoute {
-
     private router: Router = Router();
-
     constructor() {    
         this.router.post('/update', this.handlePostReq)
     }
-
     private async handlePostReq(req: any, res: Response, next: NextFunction)
     {
-
         if(!req.isAuthenticated()) 
         {
             res.status(401).send({message: `You are not logged in`})
             return
         }
-
         const { username, oldPassword, newPassword } = req.body;
-        
         if(req.user.username !== username)
         {
             res.status(403).send({message: `You don't have permission to change another user's password`})
             return
         }
-
         if(!newPassword || typeof newPassword !== "string")
         {
             res.status(400).send({message: `You must enter a new password!`})
@@ -40,23 +33,18 @@ class UpdateRoute {
                 and ${process.env.PASSWORD_MAX_CHARS} symbols`})
             return
         }
-
         User.findOne({username}, async (err: Error, doc: any) => 
         {
             if(err) 
             {
-                res.status(422).send({
-                    message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
-                })
+                res.status(500).send({ message: `Internal server error` })
                 return
             }
 
             bcrypt.compare(oldPassword, doc.password, async (err, result) => 
             {
                 if(err) {
-                    return res.status(422).send({
-                        message: `Unable to process the instructions on the server. Please use the contact form to report this issue`
-                    })
+                    return res.status(500).send({ message: `Internal server error` })
                 }
                 if(!result) return res.status(400).send({message: `Old pass must be same as your current pass`});
 

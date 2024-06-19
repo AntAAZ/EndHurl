@@ -10,6 +10,9 @@ const userGame/**: mongoose.SchemaDefinitionProperty<BorderInterface>*/ = new mo
         ref: 'Game',
         required: true
     },
+    color: {
+        type: String
+    },
     acquiredCountries: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Country'
@@ -18,6 +21,10 @@ const userGame/**: mongoose.SchemaDefinitionProperty<BorderInterface>*/ = new mo
         type: mongoose.Schema.Types.ObjectId,
         ref: 'City'
     }],
+    starterCountry: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Country'
+    },
     units: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Unit'

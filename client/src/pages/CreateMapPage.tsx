@@ -8,7 +8,7 @@ import { addCountryToMap, getCountriesByMap, getNECountries } from '../api/count
 import DraggableModalDialog from '../components/DraggableModalDialog';
 import MapLoader from '../components/MapLoader'; 
 
-export default function CreateMapPage({ mapNameParam }: any) {
+export default function CreateMapPage({ mapNameParam, linkParam }: any) {
   
   const formProperties: any = useRef({
     countryNameCharsLimit: [3, 50]
@@ -387,13 +387,11 @@ export default function CreateMapPage({ mapNameParam }: any) {
       
       if(mapRefs.hoveredCountry.current)
       {
-        console.log(mapRefs.hoveredCountry.current)
         for (let i = 0; i < mapRefs.existingBordersPathes.current.length; i++) {
           if(mapRefs.hoveredCountry.current.path[0] ==
                mapRefs.existingBordersPathes.current[i].path[0]
           ) {
             mapRefs.selectedCountry.current = { ...mapRefs.hoveredCountry.current }
-            console.log(mapRefs.selectedCountry.current)
             break
           }
         }
@@ -561,34 +559,6 @@ export default function CreateMapPage({ mapNameParam }: any) {
     mapFncs.renderMapObjects(offsetX, offsetY)
     mapFncs.drawMapImage(offsetX, offsetY)
     redrawMapWithCurrentBorders()
-    //mapFncs.drawMapImage(offsetX, offsetY)
-    /*
-    let mapWidth: any = mapRefs.mapRef.current.width
-    let ctx: any = mapRefs.canvasRef.current.getContext('2d')
-    let rect = mapRefs.canvasRef.current.getBoundingClientRect();
-    let coordX = (mapRefs.mapOffsetX.current * mapRefs.mapScale.current) % mapRefs.mapRef.current.width
-
-    for (let k = coordX - mapWidth; k <= coordX + mapWidth; k += mapWidth) {
-      let minCountryPopulation = Infinity, currentHoveredCountry, hovCountryIndex = -1
-      ctx.scale(1 / mapRefs.mapScale.current, 1 / mapRefs.mapScale.current)
-      ctx.translate(-mapWidth / 2 - k, -mapRefs.mapOffsetY.current * mapRefs.mapScale.current)
-      for(let i = 0; i < mapRefs.existingBordersPathes.current.length; i++)
-      {
-        if (ctx.isPointInPath(
-          mapRefs.existingBordersPathes.current[i].path[0],
-          (mapRefs.mousePos.current[0] - rect.left), mapRefs.mousePos.current[1] - rect.top
-        )) {
-        currentHoveredCountry = mapRefs.existingBordersPathes.current[i]
-          if(mapRefs.totalCountryPopulation.current[currentHoveredCountry.countryName] < minCountryPopulation)
-          {
-              minCountryPopulation = mapRefs.totalCountryPopulation.current[currentHoveredCountry.countryName]
-              hovCountryIndex = i
-          }
-        }
-      } 
-      currentHoveredCountry && (mapRefs.hoveredCountry.current = mapRefs.existingBordersPathes.current[hovCountryIndex])
-      ctx.setTransform(1, 0, 0, 1, 0, 0)
-    }*/
   }
   return (
     <div className="createMapPage">
@@ -607,7 +577,9 @@ export default function CreateMapPage({ mapNameParam }: any) {
         zoom({`${mapRefs.mapScale.current}`})
       </p></>}
       
-      <MapLoader ref={mapLoaderRef} mapNameProp={mapNameParam}/>
+      <MapLoader ref={mapLoaderRef} mapNameProp={mapNameParam} 
+        linkProp=''/>
+
       {mapRefs && <>
       <Modal
         show={saveBordersModalShow}

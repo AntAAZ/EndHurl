@@ -2,7 +2,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import WaterBorder from '../../models/WaterBorder';
 import River from '../../models/River';
-import { v4 as uuidv4 } from 'uuid'
 
 class WaterBorderUploadRoute {
 
@@ -24,11 +23,10 @@ class WaterBorderUploadRoute {
             res.status(401).send({ message: `Your map name is missing` });
             return
         }
-    
         const mapNameLength = mapName.length;
         const minChars = parseInt(process.env.MAPNAME_MIN_CHARS || "");
         const maxChars = parseInt(process.env.MAPNAME_MAX_CHARS || "");
-    
+
         if (mapNameLength < minChars || mapNameLength > maxChars) {
             res.status(401).send({ message: `Map name must be ${minChars}-${maxChars} symbols` });
             return
@@ -43,7 +41,6 @@ class WaterBorderUploadRoute {
             res.status(401).send({ message: `Your border points are missing` });
             return
         }
-    
         try {
             const existingRiver = await River.findOne({ name, mapName }).lean();
     
@@ -63,11 +60,8 @@ class WaterBorderUploadRoute {
             });
         }
     }
-    
-
     public getRouter(): Router {
         return this.router;
     }
 }
-
 export default new WaterBorderUploadRoute().getRouter();

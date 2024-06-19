@@ -5,23 +5,18 @@ import User from '../../models/User';
 import { UserInterface } from '../../interfaces/UserInterface';
 
 class RegisterRoute {
-
     private router: Router = Router();
-
     constructor() {    
         this.router.post('/register', this.handlePostReq)
     }
-
     private async handlePostReq(req: Request, res: Response, next: NextFunction)
     {
-
         if(req.isAuthenticated()) 
         {
             res.status(400).send({message: `You are already logged in`})
             return
         }
         const { username, password } = req.body;
-
         if(!username || !password || typeof username !== "string" || typeof password !== "string")
         {
             res.status(400).send({message: `Missing credentials`})
@@ -83,10 +78,8 @@ class RegisterRoute {
             return res.send("success")
         })
     }
-
     public getRouter() : Router {
         return this.router;
     }
 }
-
 export default new RegisterRoute().getRouter();

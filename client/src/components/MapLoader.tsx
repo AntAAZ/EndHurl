@@ -8,11 +8,11 @@ import { addCityToMap, getCitiesByMap, getNECities } from '../api/citiesAPI'
 import { addWaterToMap, getWatersByMap, getNEWaters } from '../api/riversAPI'
 import { addCountryToMap, getCountriesByMap, getNECountries } from '../api/countriesAPI'
 import { addMapByName, getMapByName } from '../api/mapsAPI'
-import DraggableModalDialog from './DraggableModalDialog';
+import { getGameByLink } from '../api/gameAPI';
 
-const MapLoader = forwardRef((props: { mapNameProp: string }, ref) => 
+const MapLoader = forwardRef((props: { mapNameProp: any, linkProp: any }, ref) => 
 {
-  const { mapNameProp } = props
+  const { mapNameProp, linkProp } = props
 
   const [loadingExistingBorders, setLoadingExistingBorders] = useState<boolean>(false);
   const [loadingExistingRivers, setLoadingExistingRivers] = useState<boolean>(false);
@@ -31,12 +31,13 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
   const mapOffsetX: any = useRef()
   const mapOffsetY: any = useRef()
   const mapScale: any = useRef(1)
+  const gameInfoRef: any = useRef(null)
 
   const [formMap, setFormMap] = useState<any>({
     name: '',
     image: ''
   })
-
+  /// to be changable in DB in the future instead of here
   const mapScaleProperties: any = useRef({
     step: 1.1, min: 0.25, max: 6
   })
@@ -49,7 +50,6 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
     cityStrokeColor: '#585858',
     capitalCityStrokeColor: '#5c5c5c'
   })
-  
   const drawBorderProperties: any = useRef({
     startPointColor: 'yellow',
     borderLineColor: 'red',
@@ -58,7 +58,6 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
     waterBorderShapeStrokeColor: '#5a8190',
     waterBorderShapeFillColor: 'cyan',
     borderShapeFillColor: 'rgba(251, 192, 147, 0.3)'
-
   })
   const modalProperties: any = useRef({
     color: 'white',
@@ -68,6 +67,7 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
     backgroundColor: 'black',
     borderColor: '#282929'
   })
+  ///
   const canvasRef: any = useRef(null)
   const requestIdRef: any = useRef()
   const mousePos: any = useRef([0, 0])
@@ -82,7 +82,6 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
   const isDragging: any = useRef<boolean>(false)
   const gameCanvasRef: any = useRef(document.createElement('canvas'))
   const mapModalErrorRef = useRef<boolean>(false)
-
   const selectedRiver = useRef<any>(false)
   const selectedCountry = useRef<any>(false)
   const selectedCity = useRef<any>(false)
@@ -120,6 +119,7 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
     drawMapImage,
     tick,
     mapRef,
+    gameInfoRef,
     mapOffsetX,
     mapOffsetY,
     mapName,
@@ -185,27 +185,36 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
   {
     setLoadingModalShow(false);
   }
-  const initPreviousMapPosition = () => {
 
+
+  const initPreviousMapPosition = () => {
     let mapScaleString: any = localStorage.getItem('mapScale')
     let mapOffsetXString: any = localStorage.getItem('mapOffsetX')
     let mapOffsetYString: any = localStorage.getItem('mapOffsetY')
     mapScale.current = mapScaleString ? parseFloat(mapScaleString) : mapScale.current
     mapOffsetX.current = mapOffsetXString ? parseFloat(mapOffsetXString) : mapOffsetX.current
     mapOffsetY.current = mapOffsetYString ? parseFloat(mapOffsetYString) : mapOffsetY.current
-    
   }
 
   const fetchMapData = async () => {
 
     let res = await getMapByName(mapNameProp)
-    // catch error if map doesnt exist in the future
+
     let mapObject: any = res.data
     mapUrl.current = mapObject.image
     mapName.current = mapObject.name
     setIsFetchingMapDone(true)
   }
+  const fetchMapDataFromLink = async () => {
+    let res = await getGameByLink(linkProp)
 
+    let gameObject: any = res.data
+    mapUrl.current = gameObject.mapImage
+    mapName.current = gameObject.mapName
+    gameInfoRef.current = gameObject
+    setIsFetchingMapDone(true)
+
+  }
   const closeMapModal = () => {
     const path = window.location.pathname;
     const previousDirectory = path.substring(0, path.lastIndexOf('/'));
@@ -241,6 +250,11 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
     }
     setLoadingModalShow(false);
     
+    if(linkProp && !isFetchingMapDone)
+    {
+      fetchMapDataFromLink()
+      return
+    }
     if(mapNameProp && !isFetchingMapDone)
     {
       fetchMapData()
@@ -282,9 +296,7 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
       mapRef.current.src = mapUrl.current;
       mapRef.current.onload = async () => 
       {
-        //loadNaturalEarthBorders();
-        //loadNaturalEarthCities();
-        //loadNaturalEarthWaters();
+        //loadNaturalEarthBorders(); loadNaturalEarthCities(); loadNaturalEarthWaters();
         updateMapOffset(mapRef.current.width / 2, 0);
         drawMapImage(mapRef.current.width / 2, 0)
         await loadAllBorders()
@@ -294,7 +306,6 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
         setMapLoading(false);
       }
     }
-
     loadMapAndGame();
   }, [isCanvasReady]);
 
@@ -317,14 +328,13 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
 
 
   const loadNaturalEarthBorders = async () => {
-    let res = await getNECountries();
-    let countries = res.data;
-    let pointsForCountry : number[][][][] = [];
+      let res = await getNECountries();
+      let countries = res.data;
+      let pointsForCountry : number[][][][] = [];
 
-    countries.forEach(async (country: any) => {
+      countries.forEach(async (country: any) => {
         pointsForCountry[country.name] = [];
       })
-  
       countries.forEach(async (country: any) => {
         for (const points of country.coords.map((points: number[][][]) => points[0])) {
             let neBorderPoints: number[][] = [];
@@ -337,7 +347,6 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
             pointsForCountry[country.name].push(neBorderPoints)
         };       
       })
-  
       for(var countryName in pointsForCountry){
         await addCountryToMap({
           countryName,
@@ -350,12 +359,9 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
     let res = await getNEWaters();
     let rivers = res.data;
     let pointsForRiver : number[][][][]= [];
-    
     rivers.forEach(async (river: any) => {
       pointsForRiver[river.name] = [];
     })
-
-
     rivers.forEach(async (river: any) => {
       for (const points of river.coords.map((points: number[][][]) => points)) {
         console.log(points)
@@ -441,7 +447,6 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
   
   const addEventListeners = (eventListeners? : any[]) => {
     if(!canvasRef.current) return
-
     if(eventListeners)
     {
         eventListeners.forEach((e: any) => {
@@ -500,12 +505,9 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
     localStorage.setItem('mapOffsetY', String(mapOffsetY.current));
   }
   const mouseWheel = (e: any) => {
-
     e.preventDefault()
     e.stopPropagation()
-
     if (!canvasRef.current) return
-
     localStorage.setItem('mapScale', String(mapScale.current))
     localStorage.setItem('mapOffsetX', String(mapOffsetX.current));
     localStorage.setItem('mapOffsetY', String(mapOffsetY.current));
@@ -518,14 +520,11 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
     }
     return [e.clientX, e.clientY]
   };
-
   const updateMapOffset = (offsetX: any, offsetY: any) => {
-
     mapOffsetX.current = offsetX
     mapOffsetY.current = offsetY
     let coordX = (offsetX * mapScale.current) % mapRef.current.width
     coordX < 0 && (coordX += mapRef.current.width)
-
     mapOffsetX.current = coordX / mapScale.current
   }
 
@@ -534,7 +533,6 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
       let rot = Math.PI/2*3;
       let x = cx, y = cy;
       let step = Math.PI/spikes;
-      
       let starPath: Path2D = new Path2D()
       starPath.moveTo(cx,cy-outerRadius)
       for(let i = 0; i < spikes; i++)
@@ -543,7 +541,7 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
         y = cy + Math.sin(rot)*outerRadius;
         starPath.lineTo(x,y)
         rot += step
-  
+
         x = cx + Math.cos(rot)*innerRadius;
         y = cy + Math.sin(rot)*innerRadius;
         starPath.lineTo(x,y)
@@ -607,7 +605,6 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
       if (offsetX < 0) offsetX += mapImage.width / mapScale.current
 
     ctx.clearRect(0, 0, gameCanvasRef.current.width, gameCanvasRef.current.height)
-
     clippedPath.rect(0, 0, gameCanvasRef.current.width, gameCanvasRef.current.height)
     ctx.clip(clippedPath)
     clippedPath.closePath()
@@ -672,7 +669,6 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
             ctx.fillStyle = mapProperties.current.cityStrokeColor
             ctx.fill(cityBorderPath);
             ctx.setTransform(1, 0, 0, 1, 0, 0)
-
             let unitsReinf = Math.ceil(
                 existingCitiesPathes.current[i].pop_max / mapProperties.current.unitsInCityPerPopulation
               )
@@ -806,7 +802,6 @@ const MapLoader = forwardRef((props: { mapNameProp: string }, ref) =>
       <canvas ref={gameCanvasRef} id='canvas' style={{position: 'absolute'}} />
       <canvas tabIndex={1} ref={canvasRef} id='canvas-id' style={{display: 'block'}} />
       
-
       {(!mapSaveSuccess && mapModalError) && <>
         <Modal show={!mapSaveSuccess} backdrop="static" keyboard={false}>
           <Modal.Header style={modalProperties.current}>

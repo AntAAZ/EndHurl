@@ -23,13 +23,11 @@ export default function RegisterPage() {
     if (!error) return <Navigate to='/' />
 
     const register = () => {
-
         if (password !== confirmPassword) {
             setErrorAlertOpen(true)
             setAlertErrorMessage("Both entered passwords must match!")
             return;
         }
-
         if (!captchaToken) {
             setErrorAlertOpen(true)
             setAlertErrorMessage("Make sure you have completed the captcha!")
@@ -51,11 +49,8 @@ export default function RegisterPage() {
     const togglePasswordType = () => {
         passwordType === "password" ? setPasswordType("text") : setPasswordType("password")
     }
-
     return (
-
         <div className="registerPage">
-
             <Row className="justify-content-center">
                 <Col xs={10} sm={9} md={8} lg={6} xl={5} xxl={4}>
                     <Alert variant='info' show={!errorAlertOpen}>

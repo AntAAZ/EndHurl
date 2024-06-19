@@ -8,8 +8,8 @@ const gameSchema = new mongoose.Schema({
         type: String,
         unique: true
     },
-    description: {
-        type: String
+    maxPlayersCount: {
+        type: Number
     },
     map: {
         type: mongoose.Schema.Types.ObjectId,
@@ -20,7 +20,12 @@ const gameSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
+    },
+    started: {
+        type: Boolean,
+        default: false
     }
 });
 
 export default mongoose.model("Game", gameSchema);
+

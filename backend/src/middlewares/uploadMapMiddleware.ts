@@ -1,8 +1,6 @@
 import { v4 } from 'uuid'
 import multer from 'multer'
-
 const DIR = './public/maps/';
-
 const storage = multer.diskStorage({
     destination: (req: any, file: any, cb: any) => {
         cb(null, DIR);
@@ -16,9 +14,8 @@ const storage = multer.diskStorage({
 let mapUpload = multer({
     storage: storage,
     fileFilter: (req: any, file: any, cb: any) => {
+        // check for dimensions in the future
         if (file.mimetype == "image/png" || file.mimetype == "image/jpg" || file.mimetype == "image/jpeg") {
-
-            // check for dimensions in the future
             cb(null, true);
         } else {
             cb(null, false);

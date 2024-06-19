@@ -1,40 +1,26 @@
 import './main.css';
 import React from 'react';
-
 import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-dom'
-
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import ChangePass from './components/ChangePass';
 import CustomizationSettings from './components/CustomizationSettings';
-
-
 import HomePage from './pages/HomePage';
 import MapsPage from './pages/MapsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CreateMapPage from './pages/CreateMapPage';
 import GamePage from './pages/GamePage';
-import CreateGamePage from './pages/CreateGamePage';
-
-
 import UserDataContext from './contexts/UserDataContext';
-
 function App() 
 {	
 	const CreateMapPageWrapper = (): any => {
 		const { mapNameParam } = useParams();
 		return <CreateMapPage mapNameParam={mapNameParam} />;
   	};
-	
 	const GamePageWrapper = (): any => {
 		const { linkParam } = useParams();
 		return <GamePage linkParam={linkParam} />;
-  	};
-
-	const CreateGamePageWrapper = (): any => {
-		const { mapNameParam } = useParams();
-		return <CreateGamePage mapNameParam={mapNameParam} />;
   	};
 	const FallbackWrapper = (): any => {
 		return (
@@ -57,7 +43,6 @@ function App()
 				<Route path='/account' element={<ChangePass />}></Route>
 				<Route path='/maps/create' element={<CreateMapPage />}></Route>
 				<Route path='/maps/edit/:mapNameParam' element={<CreateMapPageWrapper />}></Route>
-				<Route path='/games/create/:mapNameParam' element={<CreateGamePageWrapper />}></Route>
 				<Route path='/games/:linkParam' element={<GamePageWrapper />}></Route>
 			</Routes>
 			<Footer />

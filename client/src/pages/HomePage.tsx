@@ -15,7 +15,7 @@ export default function HomePage() {
             }
             <div className='mainSection'>
                 Main page content regardless of logged in or not. 
-                <h2>
+                <h2> {/**list info here about maps, player ranks, useful tool tip links and posts in the future */}
                     Lorem ipsum dolor sit amet consectetur adipisicing elit. Sunt
                     distinctio earum repellat quaerat voluptatibus placeat nam,
                     commodi optio pariatur est quia magnam eum harum corrupti dicta,

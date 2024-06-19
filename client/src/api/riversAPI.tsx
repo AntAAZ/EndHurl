@@ -1,4 +1,3 @@
-import { River } from '../types/types'
 import { axGet, axPost, defaultErrorHandler } from './axiosMethods'
 
 const getNEWaters = async () => 

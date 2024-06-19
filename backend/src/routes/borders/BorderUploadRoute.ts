@@ -2,7 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import Border from '../../models/Border';
 import Country from '../../models/Country';
-import { v4 as uuidv4 } from 'uuid'
+
 class BorderUploadRoute {
 
     private router: Router = Router()
@@ -14,10 +14,8 @@ class BorderUploadRoute {
     private async handlePostReq(req: any, res: Response, next: NextFunction) 
     {
         const { points, countryName, mapName } = req.body;
-        console.log(req.body)
         try {
 
-            // Validate input data
             if (!req.isAuthenticated()) {
                 res.status(400).send({ message: 'You are not logged in' });
                 return;
@@ -32,10 +30,12 @@ class BorderUploadRoute {
             const maxMapNameLength = parseInt(process.env.MAPNAME_MAX_CHARS || '0', 10);
             const minCountryNameLength = parseInt(process.env.COUNTRYNAME_MIN_CHARS || '0', 10);
             const maxCountryNameLength = parseInt(process.env.COUNTRYNAME_MAX_CHARS || '0', 10);
+
             if (mapNameLength < minMapNameLength || mapNameLength > maxMapNameLength ||
                 countryNameLength < minCountryNameLength || countryNameLength > maxCountryNameLength) {
                 res.status(401).send({
-                    message: `Map name must be between ${minMapNameLength}-${maxMapNameLength} characters and country name must be between ${minCountryNameLength}-${maxCountryNameLength} characters`
+                    message: `Map name must be between ${minMapNameLength}-${maxMapNameLength} characters and 
+                    country name must be between ${minCountryNameLength}-${maxCountryNameLength} characters`
                 });
                 return;
             }
@@ -44,17 +44,12 @@ class BorderUploadRoute {
                 return;
             }
 
-            // Check if the country already exists
             let country = await Country.findOne({ name: countryName, mapName });
-            if (!country) {
-                country = await new Country({ name: countryName, mapName }).save();
-            }
+            if (!country) country = await new Country({ name: countryName, mapName }).save();
 
-            // Save border points
             await Promise.all(points.map((point: number[]) => 
                 new Border({ point, countryName, mapName }).save()
             ));
-
             res.send('success');
         } catch (error) {
             console.error(`Error handling border upload map: ${mapName}`, error);

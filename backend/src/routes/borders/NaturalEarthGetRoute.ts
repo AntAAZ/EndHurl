@@ -1,16 +1,13 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
-let borderCountries = require('../neJsons/borderCountries.json')
-let splitCountries = require('../neJsons/splitBordersV4.json')
+const borderCountries = require('../neJsons/borderCountries.json')
+const splitCountries = require('../neJsons/splitBordersV4.json')
 class NaturalEarthGetRoute {
-
     private router: Router = Router();
-
     constructor() 
     {    
         this.router.get('/getNaturalEarthBorders', this.handleGetReq);
     }
-
     private handleGetReq(req: Request, res: Response, next: NextFunction)
     {
         if(!req.isAuthenticated())
@@ -19,14 +16,9 @@ class NaturalEarthGetRoute {
         }
         let borders: any = []
         let blacklisted: any = [
-            'Antarctica', 
-            'Brazil', 
-            'Canada', 
+            'Antarctica', 'Brazil', 'Canada', 
             'United States of America',
-            'Russia',
-            'China',
-            'India',
-            'Australia'
+            'Russia', 'China', 'India', 'Australia'
         ]
         let features = borderCountries.features
         for(let i = 0; i < features.length; i++)

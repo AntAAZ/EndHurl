@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-const country/**: mongoose.SchemaDefinitionProperty<CountryInterface>*/ = new mongoose.Schema({
+const country = new mongoose.Schema({
     name : {
         type: String,
     },

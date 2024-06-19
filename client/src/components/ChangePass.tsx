@@ -5,21 +5,17 @@ import { userDataContext } from '../contexts/UserDataContext'
 import React, { useState, useContext } from 'react';
 import { Form, Row, Col, InputGroup, Button } from 'react-bootstrap'
 import { LockFill } from 'react-bootstrap-icons'
-
 export default function ChangePass() 
 {
     const [oldPassword, setOldPassword] = useState<string>("")
     const [newPassword, setNewPassword] = useState<string>("")
     const [confirmNewPassword, setConfirmNewPassword] = useState<string>("")
     const [passwordType, setPasswordType] = useState<string>("password")
-
     const [errorAlertMessage, setAlertErrorMessage] = useState<string>("")
     const [errorAlertOpen, setErrorAlertOpen] = useState(false)
     const [loading, error, user] = useContext(userDataContext)
-    
     if (loading) return <></>
     if (error) return <Navigate to='/login'/>
-
     const changePass = () => 
     {
         if (oldPassword === newPassword) 
@@ -33,7 +29,6 @@ export default function ChangePass()
             setAlertErrorMessage("Please confirm your new password")
             return;
         }
-
         axios.post(`${process.env.REACT_APP_SERVER_URL}:${process.env.REACT_APP_SERVER_PORT}/update`, {
             username: user.username, 
             oldPassword,

@@ -4,13 +4,10 @@ import City from '../../models/City';
 import Country from '../../models/Country';
 
 class CityUploadRoute {
-
     private router: Router = Router()
-
     constructor() {
         this.router.post('/cityUpload', this.handlePostReq)
     }
-
     private async handlePostReq(req: any, res: Response, next: NextFunction) 
     {
         try {

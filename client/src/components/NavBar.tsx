@@ -3,7 +3,7 @@ import React, { useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { userDataContext } from '../contexts/UserDataContext'
 import { Navbar, Nav, NavDropdown, Image } from 'react-bootstrap'
-import { BellFill, PersonFill, EnvelopeFill, Discord } from 'react-bootstrap-icons'
+import { PersonFill } from 'react-bootstrap-icons'
 
 export default function NavBar() 
 {
@@ -15,7 +15,6 @@ export default function NavBar()
     }
 
     if (loading) return <></>
-
     return (
         <Navbar collapseOnSelect expand="md" bg="dark" variant="dark">
             <Navbar.Brand as={Link} to="/">Home</Navbar.Brand>
@@ -25,9 +24,6 @@ export default function NavBar()
                     <Nav.Link as={Link} to="/games">Games</Nav.Link>
                     <Nav.Link as={Link} to="/maps">Maps</Nav.Link>
                     <Nav.Link as={Link} to="/players">Players</Nav.Link>
-                    {
-                    //<Nav.Link as={Link} to="/discord"><Discord color="rgba(103, 166, 214, 0.8)" size="28px"/></Nav.Link>
-                    }
                 </Nav>
                 {error ? 
                     <Nav style={{paddingRight: '20px'}}>
@@ -37,14 +33,6 @@ export default function NavBar()
                     :
                     <>
                     <Nav>
-                        {/*
-                        <Nav.Link>
-                            <EnvelopeFill color="gray"/> 
-                        </Nav.Link>
-                        <Nav.Link>
-                            <BellFill color="orange"/>
-                        </Nav.Link>
-                        */}
                         <NavDropdown title={user.username} align="end" id="collasible-nav-dropdown">
                             <NavDropdown.Item as={Link} to={`/players/${user.username}`}>Profile</NavDropdown.Item>
                             <NavDropdown.Item as={Link} to="/customization">Customize</NavDropdown.Item>
@@ -58,14 +46,11 @@ export default function NavBar()
                             <Image className="nav-image" src={user.avatar} width="50px" height="50px"/> :
                             <PersonFill width="50px" height="50px" style={{color: 'white'}}/>
                         }
-                        
                     </Nav>
                     </>
                 }
             </Navbar.Collapse>
-            
         </Navbar>
     )
-
 
 }

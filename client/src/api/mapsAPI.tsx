@@ -1,4 +1,3 @@
-import { River } from '../types/types'
 import { axGet, axPost, axPostMultiPart, defaultErrorHandler } from './axiosMethods'
 
 const getMapByName = async (name: string) => 
