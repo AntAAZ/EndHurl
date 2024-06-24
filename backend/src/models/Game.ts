@@ -24,6 +24,10 @@ const gameSchema = new mongoose.Schema({
     started: {
         type: Boolean,
         default: false
+    },
+    battlePhase: {
+        type: Boolean,
+        default: false
     }
 });
 

@@ -54,7 +54,7 @@ class AddGameByPropsRoute {
             const randomLink = uuidv4()
 
             await new Game({
-                name, link: randomLink, maxPlayersCount, map, creator, started: false
+                name, link: randomLink, maxPlayersCount, map, creator
             }).save()
 
             return res.send({ link: randomLink });

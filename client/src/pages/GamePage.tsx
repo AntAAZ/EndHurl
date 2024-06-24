@@ -23,6 +23,8 @@ export default function GamePage({ linkParam }: any) {
 
     const isPickingCountryRef = useRef<boolean>(false)
     const [isPickingCountry, setIsPickingCountry] = useState<boolean>(false)
+    const [playersReadyModal, setPlayersReadyModal] = useState<any>({})
+    const [battlePhaseStarted, setBattlePhaseStarted] = useState<boolean>(false)
     const playersStatesRef = useRef<any>({})
     const movedMousePosition: any = useRef<any>([0, 0])
     const [mapRefs, setMapRefs] = useState<any>(null);
@@ -74,7 +76,8 @@ export default function GamePage({ linkParam }: any) {
         socketRef.current.emit('changeSettings', {
             name: gameSettingsValues.name,
             maxPlayersCount: gameSettingsValues.maxPlayersCount,
-            link: gameInfoRef.current.link
+            link: gameInfoRef.current.link,
+            starting: true
         })
     };
     const handleGameSettingsClose = () => {
@@ -93,6 +96,25 @@ export default function GamePage({ linkParam }: any) {
         handleGameSettingsClose()
         setGameStarted(true)
     }
+    const handlePlayersReadyStart = () => {
+        setPlayersReadyModal({
+            show: false
+        })
+        //setBattlePhaseStarted(true)
+        socketRef.current.emit('beginBattlePhase', { link: linkParam })
+
+    }
+
+    useEffect(() => {
+
+        if (!battlePhaseStarted) return
+
+        const timer = setTimeout(() => {
+            setBattlePhaseStarted(false)
+        }, 5000);
+
+        return () => clearTimeout(timer)
+    }, [battlePhaseStarted])
     useEffect(() => {
         if (mapLoaderRef.current) {
             const refs = {
@@ -143,6 +165,7 @@ export default function GamePage({ linkParam }: any) {
         if (!mapFncs) return
 
         mapFncs.addEventListeners([
+            { name: 'keyup', fnc: keyUp},
             { name: 'mouseup', fnc: mouseUp },
             { name: 'touchend', fnc: mouseUp },
             { name: 'mousedown', fnc: mouseDown },
@@ -153,9 +176,11 @@ export default function GamePage({ linkParam }: any) {
         ])
         setMapLoaded(true)
     }, [mapFncs])
+
     useEffect(() => {
         if (mapLoaded) updateGameMap()
     }, [mapLoaded])
+
     const handleBeforeUnload = (e: any) => {
         if (socketRef.current) {
             socketRef.current.emit('leaveGameRoom', { link: gameInfoRef.current.link });
@@ -164,6 +189,7 @@ export default function GamePage({ linkParam }: any) {
         }
         return null
     };
+
     useEffect(() => {
         isMountedRef.current = true
         window.addEventListener('beforeunload', handleBeforeUnload);
@@ -177,6 +203,15 @@ export default function GamePage({ linkParam }: any) {
             window.removeEventListener('beforeunload', handleBeforeUnload);
         }
     }, [])
+    const keyUp = (e: any) => {
+        
+        if (e.code == 'Space' && socketRef.current) {
+            socketRef.current.emit('joinGameRoom', { 
+                link: linkParam,
+                manualJoin: true 
+            })
+        }
+    }
     const mouseMove = (e: any) => {
         let newClientPos = []
         if (e.touches) {
@@ -186,6 +221,7 @@ export default function GamePage({ linkParam }: any) {
         }
         movedMousePosition.current = newClientPos
     }
+
     const mouseWheel = (e: any) => {
         e.preventDefault()
         let scaleProperties = mapRefs.mapScaleProperties.current;
@@ -355,12 +391,10 @@ export default function GamePage({ linkParam }: any) {
                 let drawBorderPath: Path2D = new Path2D(mapRefs.existingBordersPathes.current[i].path[0])
                 Object.keys(playersStatesRef.current).map((key: any) => {
                     let player = playersStatesRef.current[key]
-                    if(!player.acquiredCountries) return
-                    for(let k = 0; k < player.acquiredCountries.length; k++)
-                    {
+                    if (!player.acquiredCountries) return
+                    for (let k = 0; k < player.acquiredCountries.length; k++) {
                         let country = player.acquiredCountries[k]
-                        if(country.name == mapRefs.existingBordersPathes.current[i].countryName)
-                        {
+                        if (country.name == mapRefs.existingBordersPathes.current[i].countryName) {
                             ctx.strokeStyle = mapRefs.drawBorderProperties.current.borderShapeStrokeColor
                             ctx.fillStyle = player.color
                             ctx.fill(drawBorderPath)
@@ -409,9 +443,13 @@ export default function GamePage({ linkParam }: any) {
             player = {
                 user: gameUser.user, color, acquiredCities, acquiredCountries, starterCountry, units
             }
-        } catch (err: any) 
-        {
+        } catch (err: any) {
             player = gameUser
+            if(player.user.username == userRef.current.username && !player.spectator && gameInfoRef.current.started)
+            {
+                isPickingCountryRef.current = true
+                setIsPickingCountry(true)
+            }
         }
         finally {
             if (player.user.avatar) {
@@ -462,18 +500,22 @@ export default function GamePage({ linkParam }: any) {
         })
 
         socketRef.current.on('playerJoin', (data: any) => {
+            setPlayersReadyModal({
+                show: false
+            })
             const { userJoined } = data
             loadGameUser(userJoined)
         })
         socketRef.current.on('playerLeave', (data: any) => {
+
+            if(gameInfoRef.current.battlePhase) return
+
             const { userLeft } = data
             delete (playersStatesRef.current[userLeft.user._id])
         })
         socketRef.current.on('settingsChanged', (data: any) => {
             const { name, maxPlayersCount } = data
-            setGameSettingsValues({
-                name, maxPlayersCount
-            })
+            setGameSettingsValues({ name, maxPlayersCount })
             gameInfoRef.current = { ...gameInfoRef.current, name, maxPlayersCount }
         })
 
@@ -483,14 +525,37 @@ export default function GamePage({ linkParam }: any) {
             setIsPickingCountry(true)
         })
 
+        socketRef.current.on('startBattlePhase', () => {
+            setPlayersReadyModal({
+                show: false
+            })
+            setBattlePhaseStarted(true)
+            gameInfoRef.current.battlePhase = true
+        })
+
         socketRef.current.on('countryPicked', (data: any) => {
             const { id, countryName, acquiredCities, acquiredCountries, color } = data
             console.log(playersStatesRef.current[id])
             let mUser = playersStatesRef.current[id]
             mUser.color = color
             mUser.starterCountry = countryName
-            mUser.acquiredCities = acquiredCities 
+            mUser.acquiredCities = acquiredCities
             mUser.acquiredCountries = acquiredCountries
+        })
+
+        socketRef.current.on('allPlayersPickedCountry', (data: any) => {
+            const { creatorName } = data
+            if (creatorName == user.username) {
+                setPlayersReadyModal({
+                    show: true,
+                    message: 'All players have picked countries'
+                })
+            } else {
+                setPlayersReadyModal({
+                    show: true,
+                    message: `Waiting for host ~${creatorName}~ to start battle phase`
+                })
+            }
         })
 
         socketRef.current.on('errorMessage', (message: any) => {
@@ -535,11 +600,18 @@ export default function GamePage({ linkParam }: any) {
                 {isPickingCountry && <Alert
                     variant={'primary'}
                     key={'countryPicking'}>
-                    <div>Select a country</div>
+                    <div>Choose a starter country to play</div>
+                </Alert>
+                }
+
+                {battlePhaseStarted && <Alert
+                    variant={'success'}
+                    key={'countryPicking'}>
+                    <div>The battle phase has begun!</div>
                 </Alert>
                 }
             </div>
-            
+
             <MapLoader ref={mapLoaderRef} mapNameProp={''}
                 linkProp={linkParam} />
 
@@ -651,6 +723,34 @@ export default function GamePage({ linkParam }: any) {
                                 </Modal.Footer>
                             }
                         </div>
+                    }
+                </div>
+            </Modal></>}
+
+            {mapRefs && gameInfoRef.current && <><Modal
+                show={playersReadyModal.show}
+                dialogAs={DraggableModalDialog}
+                backdrop={false}
+                keyboard={false}
+                style={{ pointerEvents: 'none' }}
+                centered
+            >
+                <div>
+                    <Modal.Header style={mapRefs.modalProperties.current}>
+                        <Modal.Title>
+                            {playersReadyModal.message}
+                        </Modal.Title>
+                    </Modal.Header>
+                    {gameInfoRef.current.nameOfCreator == user.username &&
+
+                        <Modal.Body style={mapRefs.modalProperties.current}>
+                            <Form.Group>
+                                <Button variant={'success'}
+                                    onClick={handlePlayersReadyStart}
+                                    onTouchEnd={handlePlayersReadyStart}>
+                                    Begin battle phase
+                                </Button></Form.Group>
+                        </Modal.Body>
                     }
                 </div>
             </Modal></>}

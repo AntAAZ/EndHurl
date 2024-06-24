@@ -36,7 +36,7 @@ const WelcomeAlert = ({ user }: any) => {
 
     return (
         <>
-            {show && sendWelcomeMessage()}
+            {show && user && sendWelcomeMessage()}
         </>
     );
 };

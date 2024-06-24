@@ -38,7 +38,8 @@ class GetGameByLinkRoute {
                 nameOfCreator: game.creator.username,
                 mapName: game.map.name,
                 mapImage: game.map.image,
-                started: game.started
+                started: game.started,
+                battlePhase: game.battlePhase
             });
         } catch (err) {
             console.error(`Error in map get route: ${err}`);
