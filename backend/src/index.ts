@@ -13,22 +13,7 @@ const env: NodeJS.ProcessEnv = process.env;
 let playerStates: any = {}
 
 const updatePlayerUserState = async (link: any, userId: any) => {
-    const user = await User.findById(userId)
-    if (!user) return
-    if(playerStates[link] === undefined)
-    {
-        playerStates[link] = {}
-    }
-    playerStates[link][userId] = {
-        ...playerStates[link][userId],
-        user: {
-            _id: userId,
-            username: user.username,
-            loc: user.loc,
-            bio: user.bio,
-            avatar: user.avatar
-        }
-    }
+   
 }
 const selectRandomColor = () => {
     const vals = [[32, 96], [64, 192], [128, 192]]
@@ -45,12 +30,49 @@ const checkAllPlayersPickedCountry = (game: any) => {
     {
         if(playerStates[game.link][userId].spectator) continue
 
-        if(!playerStates[game.link][userId].starterCountry)
-        {
-            return false
-        }
+        if(!playerStates[game.link][userId].starterCountry) return false
     }
     return true
+}
+
+const initAllPlayerGameStates = async () => 
+{
+
+    const userGames = await UserGame.find().distinct('user').lean();
+
+    const users = await User.find({ _id: { $in: userGames } }).lean();
+
+    for (const user of users) 
+    {
+        const userGames = await UserGame.find({ user: user._id })
+            .populate({ path: 'user', select: '-__v' })
+            .populate({ path: 'game', select: '-_id -__v' })
+            .populate({ path: 'game.map', select: '-_id -__v' })
+            .populate({ path: 'game.creator', select: '-_id -__v' })
+            .populate({ path: 'acquiredCities', select: '-_id -__v' })
+            .populate({ path: 'acquiredCountries', select: '-_id -__v' })
+            .populate({ path: 'starterCountry', select: '-_id -__v' })
+            .lean();
+
+        for (const userGame of userGames) 
+        {
+            const { color, acquiredCities, acquiredCountries, starterCountry, units } = userGame;
+
+            if (!playerStates[userGame.game.link]) 
+            {
+                playerStates[userGame.game.link] = {};
+            }
+
+            playerStates[userGame.game.link][user._id] = {
+                user,
+                color,
+                acquiredCities,
+                acquiredCountries,
+                starterCountry,
+                units,
+            };
+        }
+    }
 }
 
 
@@ -65,70 +87,33 @@ mongoose.connect(
     }
 );
 
-const initAllPlayerGameStates = async () => {
-    const users = await User.find().lean()
-
-    for(const user of users)
-    {
-        const userGames = await UserGame.find({ user })
-            .populate({ path: 'user', select: '-__v' })
-            .populate({ path: 'game', select: '-_id -__v' })
-            .populate({ path: 'game.map', select: '-_id -__v' })
-            .populate({ path: 'game.creator', select: '-_id -__v' })
-            .populate({ path: 'acquiredCities', select: '-_id -__v' })
-            .populate({ path: 'acquiredCountries', select: '-_id -__v' }) 
-            .populate({ path: 'starterCountry', select: '-_id -__v' }).lean()
-
-        for(const userGame of userGames)
-        {
-            playerStates[userGame.game.link] = {}
-            playerStates[userGame.game.link][user._id] = {
-                user: {
-                    _id: user._id,
-                    username: user.username,
-                    loc: user.loc,
-                    bio: user.bio,
-                    avatar: user.avatar
-                },
-                color: userGame.color,
-                acquiredCities: userGame.acquiredCities,
-                acquiredCountries: userGame.acquiredCountries,
-                starterCountry: userGame.starterCountry,
-                units: userGame.units
-            }
-        }
-    }
-}
-
 mongoose.connection.once('open', async () => 
 {
     console.log("connection to MongoDB has been established");
     await initAllPlayerGameStates()
     console.log("all player game states have been loaded");
 
-    io.on('connection', (socket: any) => {
+    io.on('connection', async (socket: any) => 
+    {
         const session = socket.handshake.session;
-        if (session && session.passport && session.passport.user) {
-            const userId = session.passport.user
-            if (!userId) {
-                socket.disconnect(true)
-            }
-
-        } else {
+        if (!(session && session.passport && session.passport.user)) 
+        {
             socket.disconnect(true);
+            return
         }
 
-        socket.on('checkGameStarted', async (data: any) => {
+        const userId = session.passport.user
+        const user = await User.findById(userId)
+
+        socket.on('checkGameStarted', async (data: any) => 
+        {
             const { link } = data;
-            const userId: any = session.passport.user
-            await updatePlayerUserState(link, userId)
 
+            if(!link || !playerStates[link]) return
             const game = await Game.findOne({ link }).populate('creator').lean()
-            playerStates[link][userId].acquiredCities = []
-            playerStates[link][userId].acquiredCountries = []
-            if (!game || !game.started) return
 
-            const user = await User.findById(userId)
+            if(!game || !game.started) return
+
             let userGame = await UserGame.findOne({ user, game }).lean()
             if (userGame) return
 
@@ -142,18 +127,15 @@ mongoose.connection.once('open', async () =>
             {
                 socket.emit('allPlayersPickedCountry', { creatorName: game.creator.username })
             }
-
             
         })
-        socket.on('joinGameRoom', async (data: any) => {
+        socket.on('joinGameRoom', async (data: any) => 
+        {
             const { link, manualJoin } = data;
-            let userId: any = session.passport.user
 
-            await updatePlayerUserState(link, userId)
-
+            if(!link || !playerStates[link]) return
             if (playerStates[link][userId].spectator && !manualJoin) return
 
-            let user = await User.findById(userId)
             let game = await Game.findOne({ link }).populate('creator').lean()
             if(!game) return
 
@@ -198,22 +180,22 @@ mongoose.connection.once('open', async () =>
 
         socket.on('leaveGameRoom', async (data: any) => {
             const { link } = data;
-            let userId: any = session.passport.user
-            await updatePlayerUserState(link, userId)
+
+            if(!link || !playerStates[link]) return
 
             socket.leave(link);
             socket.broadcast.to(link).emit('playerLeave', { userLeft: playerStates[link][userId] });
-            if (!playerStates[link][userId].spectator) {
+
+            if (!playerStates[link][userId].spectator) 
+            {
                 socket.broadcast.to(link).emit('errorMessage',
                     `${playerStates[link][userId].user.username} has disconnected`
                 )
             }
             
-            let user = await User.findById(userId)
             let game = await Game.findOne({ link }).populate('creator').lean()
 
             if(!game || !game.started || game.battlePhase) return
-
 
             await UserGame.findOneAndDelete({ user, game })
             delete (playerStates[link][userId])
@@ -226,12 +208,12 @@ mongoose.connection.once('open', async () =>
 
         socket.on('changeSettings', async (data: any) => {
             const { link, name, maxPlayersCount, starting } = data;
-            let userId: any = session.passport.user
-            await updatePlayerUserState(link, userId)
 
+            if(!link || !playerStates[link]) return
             let gameObject = await Game.findOne({ link }).populate('creator');
 
-            if (gameObject.creator.username != playerStates[link][userId].user.username) {
+            if (gameObject.creator.username != playerStates[link][userId].user.username) 
+            {
                 io.to(link).emit('errorMessage',
                     `${playerStates[link][userId].user.username} trying to change settings when not the creator`)
                 return
@@ -240,14 +222,14 @@ mongoose.connection.once('open', async () =>
             io.to(link).emit('settingsChanged', {
                 name, maxPlayersCount
             });
+
             if(starting) return
             io.to(link).emit('infoMessage', `${gameObject.creator.username} has changed the settings!`)
         });
 
         socket.on('hostStartingGame', async (data: any) => {
             const { link } = data;
-            let userId: any = session.passport.user
-            await updatePlayerUserState(link, userId)
+            if(!link || !playerStates[link]) return
 
             let gameObject = await Game.findOne({ link }).populate('creator');
             if(!gameObject) return
@@ -265,6 +247,8 @@ mongoose.connection.once('open', async () =>
             gameObject.started = true
             await gameObject.save()
 
+            playerStates[link] = {}
+
             io.to(link).emit('gameStarted');
             io.to(link).emit('importantMessage', `${gameObject.creator.username} has started the game!`)
 
@@ -273,9 +257,7 @@ mongoose.connection.once('open', async () =>
         socket.on('playerPickingCountry', async (data: any) => {
 
             const { link, name } = data;
-            console.log(data)
-            let userId: any = session.passport.user
-            await updatePlayerUserState(link, userId)
+            if(!link || !playerStates[link]) return
 
             if(playerStates[link][userId].spectator) return
 
@@ -286,16 +268,16 @@ mongoose.connection.once('open', async () =>
             let country = await Country.findOne({ name, mapName: gameObject.map.name }).lean()
             if (!country) return
 
-
-            const user = await User.findById(userId)
             let userGameObject = await UserGame.findOne({ user, game: gameObject }).lean()
-            if (userGameObject) {
+            if (userGameObject) 
+            {
                 socket.emit('errorMessage', `You already have a confirmed selected country`)
                 return
             }
 
             let cities = await City.find({ countryName: country.name, mapName: gameObject.map.name }).lean()
             if (!cities) return
+
             userGameObject = new UserGame({
                 user,
                 game: gameObject,
@@ -305,10 +287,14 @@ mongoose.connection.once('open', async () =>
                 starterCountry: country,
                 units: []
             })
+
             playerStates[link][userId].units = []
+
             const popForUnit = 450000, maxUnits = 10 /// to add to Map model
-            cities.forEach((city: any) => {
-                let unitsInCity = {
+
+            cities.forEach((city: any) => 
+            {
+                const unitsInCity = {
                     city,
                     userGame: userGameObject,
                     numberOfUnits: Math.ceil((city.pop_max / popForUnit)) < maxUnits ?
@@ -345,8 +331,7 @@ mongoose.connection.once('open', async () =>
 
         socket.on('beginBattlePhase', async(data: any) => {
             const { link } = data
-            let userId: any = session.passport.user
-            await updatePlayerUserState(link, userId)
+            if(!link || !playerStates[link]) return
 
             let game = await Game.findOne({ link }).populate('creator')
             if(!game || game.battlePhase || !game.started) return
