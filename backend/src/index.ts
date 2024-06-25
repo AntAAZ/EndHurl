@@ -65,8 +65,46 @@ mongoose.connect(
     }
 );
 
-mongoose.connection.once('open', () => {
+const initAllPlayerGameStates = async () => {
+    const users = await User.find().lean()
+
+    for(const user of users)
+    {
+        const userGames = await UserGame.find({ user })
+            .populate({ path: 'user', select: '-__v' })
+            .populate({ path: 'game', select: '-_id -__v' })
+            .populate({ path: 'game.map', select: '-_id -__v' })
+            .populate({ path: 'game.creator', select: '-_id -__v' })
+            .populate({ path: 'acquiredCities', select: '-_id -__v' })
+            .populate({ path: 'acquiredCountries', select: '-_id -__v' }) 
+            .populate({ path: 'starterCountry', select: '-_id -__v' }).lean()
+
+        for(const userGame of userGames)
+        {
+            playerStates[userGame.game.link] = {}
+            playerStates[userGame.game.link][user._id] = {
+                user: {
+                    _id: user._id,
+                    username: user.username,
+                    loc: user.loc,
+                    bio: user.bio,
+                    avatar: user.avatar
+                },
+                color: userGame.color,
+                acquiredCities: userGame.acquiredCities,
+                acquiredCountries: userGame.acquiredCountries,
+                starterCountry: userGame.starterCountry,
+                units: userGame.units
+            }
+        }
+    }
+}
+
+mongoose.connection.once('open', async () => 
+{
     console.log("connection to MongoDB has been established");
+    await initAllPlayerGameStates()
+    console.log("all player game states have been loaded");
 
     io.on('connection', (socket: any) => {
         const session = socket.handshake.session;
