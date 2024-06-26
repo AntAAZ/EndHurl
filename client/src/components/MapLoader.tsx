@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useContext,
     forwardRef, useImperativeHandle, useCallback } from 'react';
 
 import MapsPage from '../pages/MapsPage'
+import { useMatch } from 'react-router-dom';
 import { Button, Modal, Form } from 'react-bootstrap'
 import { userDataContext } from '../contexts/UserDataContext'
 import { addCityToMap, getCitiesByMap, getNECities } from '../api/citiesAPI'
@@ -12,6 +13,7 @@ import { getGameByLink } from '../api/gameAPI';
 
 const MapLoader = forwardRef((props: { mapNameProp: any, linkProp: any }, ref) => 
 {
+  const matchGamesRoute = useMatch(`/games/:id`);
   const { mapNameProp, linkProp } = props
 
   const [loadingExistingBorders, setLoadingExistingBorders] = useState<boolean>(false);
@@ -593,6 +595,7 @@ const MapLoader = forwardRef((props: { mapNameProp: any, linkProp: any }, ref) =
   }
   const renderMapObjects = (offsetX: any, offsetY: any) => 
   {
+    if(matchGamesRoute) return
     if(!gameCanvasRef.current) return
     gameCanvasRef.current.width = window.innerWidth
     gameCanvasRef.current.height = window.innerHeight

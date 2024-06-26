@@ -165,7 +165,7 @@ export default function GamePage({ linkParam }: any) {
         if (!mapFncs) return
 
         mapFncs.addEventListeners([
-            { name: 'keyup', fnc: keyUp},
+            { name: 'keyup', fnc: keyUp },
             { name: 'mouseup', fnc: mouseUp },
             { name: 'touchend', fnc: mouseUp },
             { name: 'mousedown', fnc: mouseDown },
@@ -204,11 +204,11 @@ export default function GamePage({ linkParam }: any) {
         }
     }, [])
     const keyUp = (e: any) => {
-        
+
         if (e.code == 'Space' && socketRef.current) {
-            socketRef.current.emit('joinGameRoom', { 
+            socketRef.current.emit('joinGameRoom', {
                 link: linkParam,
-                manualJoin: true 
+                manualJoin: true
             })
         }
     }
@@ -374,36 +374,122 @@ export default function GamePage({ linkParam }: any) {
         drawMap(mapRefs.mapOffsetX.current, mapRefs.mapOffsetY.current)
         requestAnimationFrame(updateGameMap)
     }
+    const brightenColor = (rgba: any, factor = 0.1, alpha?: any) => {
+        // Extract the RGBA components from the input string
+        const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*(\d*\.?\d+)?\)/);
+        if (!match) {
+          throw new Error("Invalid RGBA string");
+        }
+      
+        let [r, g, b, a] = match.slice(1).map((num: any, index: any) => (index < 3 ? parseInt(num) : parseFloat(num)));
+        
+        // Set default alpha to 1 if not provided
+        a = a !== undefined ? a : 1;
+      
+        // Function to brighten a single color component
+        const brighten = (color: any) => Math.min(Math.floor(color + (255 - color) * factor), 255);
+      
+        // Brighten each of the RGB components
+        r = brighten(r);
+        g = brighten(g);
+        b = brighten(b);
+      
+        // Return the new brighter RGBA color string
+        if(alpha) a = alpha
+        return `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
     const drawPlayerCountries = (offsetX: any, offsetY: any) => {
+
         let ctx: any = mapRefs.gameCanvasRef.current.getContext('2d')
         let mapImage: any = mapRefs.mapRef.current
+        let clippedPath: Path2D = new Path2D()
         let coordX = (offsetX * mapRefs.mapScale.current) % mapImage.width
         if (offsetX * mapRefs.mapScale.current >= mapImage.width ||
             offsetX * mapRefs.mapScale.current <= -mapImage.width) offsetX %= mapImage.width / mapRefs.mapScale.current
         if (offsetX < 0) offsetX += mapImage.width / mapRefs.mapScale.current
 
+        ctx.clearRect(0, 0, mapRefs.gameCanvasRef.current.width, mapRefs.gameCanvasRef.current.height)
+        clippedPath.rect(0, 0, mapRefs.gameCanvasRef.current.width, mapRefs.gameCanvasRef.current.height)
+        ctx.clip(clippedPath)
+        clippedPath.closePath()
+
         for (let k = coordX - mapImage.width; k <= coordX + mapImage.width; k += mapImage.width) {
-            ctx.scale(1 / mapRefs.mapScale.current, 1 / mapRefs.mapScale.current)
-            ctx.translate(-mapImage.width / 2 - k, -offsetY * mapRefs.mapScale.current)
-            ctx.fillStyle = mapRefs.drawBorderProperties.current.borderShapeFillColor
-            ctx.lineWidth = mapRefs.mapProperties.current.borderLineWidths
+            ctx.scale(1 / mapRefs.mapScale.current, 1 / mapRefs.mapScale.current);
+            ctx.translate(-mapImage.width / 2 - k, -offsetY * mapRefs.mapScale.current);
+            ctx.fillStyle = mapRefs.drawBorderProperties.current.borderShapeFillColor;
+            ctx.lineWidth = mapRefs.mapProperties.current.borderLineWidths;
+        
             for (let i = 0; i < mapRefs.existingBordersPathes.current.length; i++) {
-                let drawBorderPath: Path2D = new Path2D(mapRefs.existingBordersPathes.current[i].path[0])
-                Object.keys(playersStatesRef.current).map((key: any) => {
-                    let player = playersStatesRef.current[key]
-                    if (!player.acquiredCountries) return
-                    for (let k = 0; k < player.acquiredCountries.length; k++) {
-                        let country = player.acquiredCountries[k]
-                        if (country.name == mapRefs.existingBordersPathes.current[i].countryName) {
-                            ctx.strokeStyle = mapRefs.drawBorderProperties.current.borderShapeStrokeColor
-                            ctx.fillStyle = player.color
-                            ctx.fill(drawBorderPath)
-                            ctx.stroke(drawBorderPath)
-                        }
+                let drawBorderPath = new Path2D(mapRefs.existingBordersPathes.current[i].path[0]);
+        
+                ctx.strokeStyle = mapRefs.drawBorderProperties.current.borderShapeStrokeColor;
+                ctx.stroke(drawBorderPath);
+        
+                if (mapRefs.hoveredCountry.current && mapRefs.hoveredCountry.current.countryName === mapRefs.existingBordersPathes.current[i].countryName) {
+                    ctx.fillStyle = "#57575757";
+                    ctx.fill(drawBorderPath);
+                    ctx.fillStyle = mapRefs.drawBorderProperties.current.borderShapeFillColor;
+                }
+        
+                Object.keys(playersStatesRef.current).forEach((key) => {
+                    let player = playersStatesRef.current[key];
+                    if (player.acquiredCountries) {
+                        player.acquiredCountries.forEach((country: any) => {
+                            if (country.name === mapRefs.existingBordersPathes.current[i].countryName) {
+                                ctx.fillStyle = player.color;
+                                ctx.fill(drawBorderPath);
+                            }
+                        });
                     }
-                })
+                });
             }
-            ctx.setTransform(1, 0, 0, 1, 0, 0)
+        
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            for (let i = 0; i < mapRefs.existingCitiesPathes.current.length; i++) {
+                ctx.scale(1 / mapRefs.mapScale.current, 1 / mapRefs.mapScale.current);
+                ctx.translate(-mapImage.width / 2 - k, -offsetY * mapRefs.mapScale.current);
+        
+                let cityBorderPath = new Path2D(mapRefs.existingCitiesPathes.current[i].path[0]);
+        
+                if (mapRefs.existingCitiesPathes.current[i].type) {
+                    let starBorderPath = new Path2D(mapRefs.existingCitiesPathes.current[i].path[1]);
+                    ctx.fillStyle = mapRefs.mapProperties.current.capitalCityStrokeColor;
+                    ctx.fill(starBorderPath);
+                }
+                ctx.fillStyle = mapRefs.mapProperties.current.cityStrokeColor;
+                ctx.fill(cityBorderPath);
+        
+                Object.keys(playersStatesRef.current).forEach((key) => {
+                    let player = playersStatesRef.current[key];
+                    if (player.acquiredCities) {
+                        player.acquiredCities.forEach((city: any) => {
+                            if (city.name === mapRefs.existingCitiesPathes.current[i].name) {
+                                if (city.type) {
+                                    let starBorderPath = new Path2D(mapRefs.existingCitiesPathes.current[i].path[1]);
+                                    ctx.fillStyle = brightenColor(player.color, 0, 1);
+                                    ctx.fill(starBorderPath);
+                                }
+                                ctx.fillStyle = brightenColor(player.color, -0.05, 0.75);
+                                ctx.fill(cityBorderPath);
+                            }
+                        });
+                    }
+                });
+        
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                let unitsReinf = Math.ceil(mapRefs.existingCitiesPathes.current[i].pop_max / mapRefs.mapProperties.current.unitsInCityPerPopulation);
+                if (unitsReinf > mapRefs.mapProperties.current.maxDefaultUnitsInCity) {
+                    unitsReinf = mapRefs.mapProperties.current.maxDefaultUnitsInCity;
+                }
+                ctx.strokeStyle = `rgba(255, 255, 255, 0.75)`;
+                ctx.font = `${mapRefs.mapProperties.current.cityRadius / mapRefs.mapScale.current}px Verdana`;
+                ctx.strokeText(unitsReinf,
+                    ((mapRefs.existingCitiesPathes.current[i].point[0] - k) - unitsReinf.toString().length * mapRefs.mapProperties.current.cityRadius / 3) / mapRefs.mapScale.current,
+                    ((mapRefs.existingCitiesPathes.current[i].point[1] + mapRefs.mapProperties.current.cityRadius / 3) / mapRefs.mapScale.current - offsetY)
+                );
+                ctx.stroke();
+            }
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
         }
     }
     const drawMap = (offsetX: any, offsetY: any) => {
@@ -433,20 +519,14 @@ export default function GamePage({ linkParam }: any) {
     const loadGameUser = async (gameUser: any) => {
         let player: any = {}
         try {
-            const res = await getUserGameData({
-                username: gameUser.user.username,
-                link: linkParam
-            })
-
-            const { color, acquiredCities, acquiredCountries, starterCountry, units } = res.data
-
-            player = {
-                user: gameUser.user, color, acquiredCities, acquiredCountries, starterCountry, units
+            player = gameUser
+            if (player.user.username == userRef.current.username && !player.spectator && gameInfoRef.current.started) {
+                isPickingCountryRef.current = true
+                setIsPickingCountry(true)
             }
         } catch (err: any) {
             player = gameUser
-            if(player.user.username == userRef.current.username && !player.spectator && gameInfoRef.current.started)
-            {
+            if (player.user.username == userRef.current.username && !player.spectator && gameInfoRef.current.started) {
                 isPickingCountryRef.current = true
                 setIsPickingCountry(true)
             }
@@ -490,8 +570,6 @@ export default function GamePage({ linkParam }: any) {
         )
         if (!linkParam) return joinAllGamesRoom()
 
-        socketRef.current.emit('checkGameStarted', { link: linkParam })
-
         socketRef.current.on('updatePlayerStates', (data: any) => {
             const { playerUserStates } = data
             Object.keys(playerUserStates).forEach(key => {
@@ -508,7 +586,7 @@ export default function GamePage({ linkParam }: any) {
         })
         socketRef.current.on('playerLeave', (data: any) => {
 
-            if(gameInfoRef.current.battlePhase) return
+            if (gameInfoRef.current.battlePhase) return
 
             const { userLeft } = data
             delete (playersStatesRef.current[userLeft.user._id])
