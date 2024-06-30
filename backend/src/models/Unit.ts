@@ -5,14 +5,24 @@ const unitSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'City'
     },
-    userGame: {
+    game: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'UserGame',
-        required: true
+        ref: 'Game'
     },
     numberOfUnits: {
         type: Number,
         required: true
+    },
+    userGame: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'UserGame'
+    },
+    point: {
+        type: Array,
+    },
+    range: {
+        type: Number,
+        default: 0
     }
 });
 

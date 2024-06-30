@@ -45,6 +45,7 @@ export default function GamePage({ linkParam }: any) {
     const moveUnitsViewRef = useRef<any>({})
     const selectedUnitsRef = useRef(0)
     const movingUnitsCurrentPos = useRef<any>()
+    const neutralCitiesRef = useRef<any>({})
     useEffect(() => {
         userRef.current = user;
     }, [user]);
@@ -122,11 +123,11 @@ export default function GamePage({ linkParam }: any) {
         ///
     }
 
-    const checkArcsIntersecting = (center1: any, center2: any, radius: any) => {
+    const checkArcsIntersecting = (center1: any, center2: any, radius: any, radius2 = radius) => {
         const [x1, y1] = center1;
         const [x2, y2] = center2;
         const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-        return distance <= 2 * radius;
+        return distance <= radius + radius2;
     }
     useEffect(() => {
 
@@ -299,6 +300,67 @@ export default function GamePage({ linkParam }: any) {
             ctx.scale(1 / mapRefs.mapScale.current, 1 / mapRefs.mapScale.current);
             ctx.translate(-mapWidth / 2 - k, -mapRefs.mapOffsetY.current * mapRefs.mapScale.current);
 
+            if (!movingUnitsRef.current && gameInfoRef.current.battlePhase) {
+                for (let i = 0; i < playersStatesRef.current[userRef.current._id].units.length; i++) {
+                    const unitStackOutsideCity = playersStatesRef.current[userRef.current._id].units[i];
+                    if (unitStackOutsideCity.city == null) {
+                        let unitPoint = unitStackOutsideCity.point;
+                        let mousePoint = [mapRefs.mousePos.current[0] - rect.left, mapRefs.mousePos.current[1] - rect.top];
+                        const adjustedX = (mousePoint[0] * mapRefs.mapScale.current + k) % mapRefs.mapRef.current.width;
+                        const adjustedY = (mousePoint[1] + mapRefs.mapOffsetY.current) * mapRefs.mapScale.current;
+                        mousePoint = [adjustedX, adjustedY];
+
+                        if (checkArcsIntersecting(unitPoint, mousePoint, mapRefs.mapProperties.current.cityRadius * 0.75, 0)) {
+                            setSelectedUnits(0);
+                            selectedUnitsRef.current = 0;
+                            let unitStackView = {
+                                point: unitPoint,
+                                numberOfUnits: unitStackOutsideCity.numberOfUnits,
+                                range: unitStackOutsideCity.range
+                            };
+                            setMoveUnitsView(unitStackView);
+                            moveUnitsViewRef.current = unitStackView;
+                            setMoveUnitsModalShow(true);
+                            return;
+                        }
+                    }
+                }
+            }
+            if (movingUnitsRef.current && gameInfoRef.current.battlePhase) {
+                for (const userId of Object.keys(playersStatesRef.current)) {
+                    for (const unitStackOutsideCity of playersStatesRef.current[userId].units) {
+                        if (unitStackOutsideCity.city == null) {
+                            let unitPoint = unitStackOutsideCity.point;
+                            let mousePoint = [mapRefs.mousePos.current[0] - rect.left, mapRefs.mousePos.current[1] - rect.top];
+                            const adjustedX = (mousePoint[0] * mapRefs.mapScale.current + k) % mapRefs.mapRef.current.width;
+                            const adjustedY = (mousePoint[1] + mapRefs.mapOffsetY.current) * mapRefs.mapScale.current;
+                            mousePoint = [adjustedX, adjustedY];
+
+                            if (checkArcsIntersecting(unitPoint, mousePoint, mapRefs.mapProperties.current.cityRadius * 0.75, mapRefs.mapProperties.current.cityRadius * 0.75)) {
+                                movingUnitsRef.current = false;
+                                if (!moveUnitsViewRef.current.name) {
+                                    console.log("STACK TO STACK");
+                                    socketRef.current.emit('moveUnitsBetween', {
+                                        sourcePoint: moveUnitsViewRef.current.point,
+                                        destinationPoint: unitPoint,
+                                        numberOfUnits: selectedUnitsRef.current,
+                                        link: linkParam
+                                    });
+                                } else {
+                                    console.log("CITY TO STACK");
+                                    socketRef.current.emit('moveUnitsBetween', {
+                                        sourceCityName: moveUnitsViewRef.current.name,
+                                        destinationPoint: unitPoint,
+                                        numberOfUnits: selectedUnitsRef.current,
+                                        link: linkParam
+                                    });
+                                }
+                                return
+                            }
+                        }
+                    }
+                }
+            }
             for (let i = 0; i < mapRefs.existingCitiesPathes.current.length; i++) {
                 let check: any
                 let mousePoint = [mapRefs.mousePos.current[0] - rect.left, mapRefs.mousePos.current[1] - rect.top]
@@ -307,10 +369,17 @@ export default function GamePage({ linkParam }: any) {
                     const adjustedX = (movingUnitsCurrentPos.current[0] * mapRefs.mapScale.current + movingUnitsCurrentPos.current[2]) % mapRefs.mapRef.current.width;
                     const adjustedY = (movingUnitsCurrentPos.current[1] + mapRefs.mapOffsetY.current) * mapRefs.mapScale.current;
                     mousePoint = [adjustedX, adjustedY]
+                    if (moveUnitsViewRef.current.name) {
+                        check = checkArcsIntersecting(
+                            mapRefs.existingCitiesPathes.current[i].point,
+                            mousePoint, mapRefs.mapProperties.current.cityRadius)
+                    } else {
 
-                    check = checkArcsIntersecting(
-                        mapRefs.existingCitiesPathes.current[i].point,
-                        mousePoint, mapRefs.mapProperties.current.cityRadius)
+                        check = checkArcsIntersecting(
+                            mapRefs.existingCitiesPathes.current[i].point,
+                            mousePoint, mapRefs.mapProperties.current.cityRadius,
+                            mapRefs.mapProperties.current.cityRadius * 0.75)
+                    }
                 } else {
                     check = ctx.isPointInPath(
                         mapRefs.existingCitiesPathes.current[i].path[0],
@@ -325,20 +394,34 @@ export default function GamePage({ linkParam }: any) {
                     let currentUnitStacks = playersStatesRef.current[userRef.current._id].units;
                     if (currentUnitStacks) {
                         for (let unitStack of currentUnitStacks) {
+                            if (!unitStack.city) continue
                             if (unitStack.city.name == mapRefs.selectedCity.current.name) {
                                 citySelected = true;
                                 targetingOwnCity = true;
                                 if (movingUnitsRef.current) {
                                     movingUnitsRef.current = false;
-                                    console.log(`player ${userRef.current.username} is moving ${selectedUnitsRef.current} units from ${moveUnitsViewRef.current.name} to ${unitStack.city.name}`);
-                                    socketRef.current.emit('moveUnitsBetweenCities', {
-                                        sourceCityName: moveUnitsViewRef.current.name,
-                                        destinationCityName: unitStack.city.name,
-                                        numberOfUnits: selectedUnitsRef.current
-                                    });
+
+                                    if (moveUnitsViewRef.current.name) {
+                                        socketRef.current.emit('moveUnitsBetween', {
+                                            sourceCityName: moveUnitsViewRef.current.name,
+                                            destinationCityName: unitStack.city.name,
+                                            numberOfUnits: selectedUnitsRef.current,
+                                            link: linkParam
+                                        });
+                                        console.log('city to city')
+                                    } else {
+                                        socketRef.current.emit('moveUnitsBetween', {
+                                            sourcePoint: moveUnitsViewRef.current.point,
+                                            destinationCityName: unitStack.city.name,
+                                            numberOfUnits: selectedUnitsRef.current,
+                                            link: linkParam
+                                        });
+                                        console.log('stack to city')
+                                    }
                                     break;
                                 }
                                 setSelectedUnits(0);
+                                selectedUnitsRef.current = 0
                                 let unitStackView = {
                                     name: unitStack.city.name,
                                     point: unitStack.city.point,
@@ -356,12 +439,24 @@ export default function GamePage({ linkParam }: any) {
                             citySelected = true;
                             if (movingUnitsRef.current) {
                                 movingUnitsRef.current = false;
-                                console.log(`player ${userRef.current.username} is attacking ${mapRefs.selectedCity.current.name} with ${selectedUnitsRef.current} units from ${moveUnitsViewRef.current.name}`);
-                                socketRef.current.emit('attackingCity', {
-                                    sourceCityName: moveUnitsViewRef.current.name,
-                                    destinationCityName: mapRefs.selectedCity.current.name,
-                                    numberOfUnits: selectedUnitsRef.current
-                                });
+
+                                if (moveUnitsViewRef.current.name) {
+                                    socketRef.current.emit('moveUnitsBetween', {
+                                        sourceCityName: moveUnitsViewRef.current.name,
+                                        destinationCityName: mapRefs.selectedCity.current.name,
+                                        numberOfUnits: selectedUnitsRef.current,
+                                        link: linkParam
+                                    });
+                                    console.log('city to city')
+                                } else {
+                                    socketRef.current.emit('moveUnitsBetween', {
+                                        sourcePoint: moveUnitsViewRef.current.point,
+                                        destinationCityName: mapRefs.selectedCity.current.name,
+                                        numberOfUnits: selectedUnitsRef.current,
+                                        link: linkParam
+                                    });
+                                    console.log('stack to city')
+                                }
                             }
                         }
                     }
@@ -378,14 +473,25 @@ export default function GamePage({ linkParam }: any) {
             const adjustedY = (movingUnitsCurrentPos.current[1] + mapRefs.mapOffsetY.current) * mapRefs.mapScale.current;
 
             let locPoint = [adjustedX, adjustedY]
-            console.log(`player ${userRef.current.username} is moving ${selectedUnitsRef.current} units to point {${locPoint[0]}, ${locPoint[1]}}`);
-            movingUnitsRef.current = false;
 
-            socketRef.current.emit('moveUnitsToRandomPoint', {
-                sourceCityName: moveUnitsViewRef.current.name,
-                point: locPoint,
-                numberOfUnits: selectedUnitsRef.current
-            });
+            movingUnitsRef.current = false;
+            if (moveUnitsViewRef.current.name) {
+                socketRef.current.emit('moveUnitsBetween', {
+                    sourceCityName: moveUnitsViewRef.current.name,
+                    destinationPoint: locPoint,
+                    numberOfUnits: selectedUnitsRef.current,
+                    link: linkParam
+                })
+                console.log('city to stack')
+            } else {
+                socketRef.current.emit('moveUnitsBetween', {
+                    sourcePoint: moveUnitsViewRef.current.point,
+                    destinationPoint: locPoint,
+                    numberOfUnits: selectedUnitsRef.current,
+                    link: linkParam
+                })
+                console.log('stack to stack')
+            }
 
         }
 
@@ -578,23 +684,68 @@ export default function GamePage({ linkParam }: any) {
 
 
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
-                /*let unitsReinf = Math.ceil(mapRefs.existingCitiesPathes.current[i].pop_max / mapRefs.mapProperties.current.unitsInCityPerPopulation);
-                if (unitsReinf > mapRefs.mapProperties.current.maxDefaultUnitsInCity) {
-                    unitsReinf = mapRefs.mapProperties.current.maxDefaultUnitsInCity;
+                if (neutralCitiesRef.current) {
+                    let currCity = neutralCitiesRef.current[mapRefs.existingCitiesPathes.current[i].name]
+                    if (currCity) {
+                        ctx.beginPath()
+
+                        ctx.strokeStyle = `rgba(255, 255, 255, 0.75)`;
+                        ctx.font = `${mapRefs.mapProperties.current.cityRadius / mapRefs.mapScale.current}px Verdana`;
+                        ctx.strokeText(currCity.numberOfUnits,
+                            ((mapRefs.existingCitiesPathes.current[i].point[0] - k) - currCity.numberOfUnits.toString().length * mapRefs.mapProperties.current.cityRadius / 3) / mapRefs.mapScale.current,
+                            ((mapRefs.existingCitiesPathes.current[i].point[1] + mapRefs.mapProperties.current.cityRadius / 3) / mapRefs.mapScale.current - offsetY)
+                        );
+                        ctx.stroke();
+                        ctx.closePath()
+                    }
                 }
-
-
-                ctx.beginPath()
-
-                ctx.strokeStyle = `rgba(255, 255, 255, 0.75)`;
-                ctx.font = `${mapRefs.mapProperties.current.cityRadius / mapRefs.mapScale.current}px Verdana`;
-                ctx.strokeText(unitsReinf,
-                    ((mapRefs.existingCitiesPathes.current[i].point[0] - k) - unitsReinf.toString().length * mapRefs.mapProperties.current.cityRadius / 3) / mapRefs.mapScale.current,
-                    ((mapRefs.existingCitiesPathes.current[i].point[1] + mapRefs.mapProperties.current.cityRadius / 3) / mapRefs.mapScale.current - offsetY)
-                );
-                ctx.stroke();
-                ctx.closePath()*/
             }
+            Object.keys(playersStatesRef.current).forEach((userId: any) => {
+                let unitStacksUser = playersStatesRef.current[userId].units
+                if (unitStacksUser) {
+                    for (let unitStackUser of unitStacksUser) {
+                        ctx.beginPath()
+                        ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
+                        let unitsDisplay = Number(unitStackUser.numberOfUnits)
+                        if (!unitStackUser.city) {
+                            ctx.font = `${mapRefs.mapProperties.current.cityRadius * 0.75 / mapRefs.mapScale.current}px Verdana`;
+                            if (movingUnitsRef.current && moveUnitsViewRef.current &&
+                                moveUnitsViewRef.current.point === unitStackUser.point
+                            ) {
+                                unitsDisplay -= selectedUnitsRef.current
+                            }
+                            if (unitsDisplay > 0) {
+                                ctx.fillStyle = brightenColor(playersStatesRef.current[userId].color, -0.05, 0.75);
+                                ctx.arc((unitStackUser.point[0] - k) / mapRefs.mapScale.current,
+                                    unitStackUser.point[1] / mapRefs.mapScale.current - offsetY,
+                                    mapRefs.mapProperties.current.cityRadius * 0.75 / mapRefs.mapScale.current,
+                                    0, Math.PI * 2
+                                );
+                                ctx.fill();
+                                ctx.strokeText(unitsDisplay, /// / 3 * 4/3    (3/4 = 0.75)
+                                    ((unitStackUser.point[0] - k) - unitsDisplay.toString().length * mapRefs.mapProperties.current.cityRadius / 4) / mapRefs.mapScale.current,
+                                    ((unitStackUser.point[1] + mapRefs.mapProperties.current.cityRadius / 4) / mapRefs.mapScale.current - offsetY)
+                                );
+                                ctx.stroke();
+                            }
+
+                        } else {
+                            ctx.font = `${mapRefs.mapProperties.current.cityRadius / mapRefs.mapScale.current}px Verdana`;
+                            if (movingUnitsRef.current && moveUnitsViewRef.current &&
+                                moveUnitsViewRef.current.name && moveUnitsViewRef.current.name == unitStackUser.city.name
+                            ) {
+                                unitsDisplay -= selectedUnitsRef.current
+                            }
+                            ctx.strokeText(unitsDisplay,
+                                ((unitStackUser.city.point[0] - k) - unitsDisplay.toString().length * mapRefs.mapProperties.current.cityRadius / 3) / mapRefs.mapScale.current,
+                                ((unitStackUser.city.point[1] + mapRefs.mapProperties.current.cityRadius / 3) / mapRefs.mapScale.current - offsetY)
+                            );
+                            ctx.stroke();
+                        }
+                        ctx.closePath()
+                    }
+                }
+            })
             if (movingUnitsRef.current) {
                 ctx.beginPath();
                 ctx.fillStyle = 'rgba(0, 255, 0, 0.25)';
@@ -613,69 +764,87 @@ export default function GamePage({ linkParam }: any) {
 
                 const arcYOriginal = ((movedMousePosition.current[1] - rect.top + offsetY) * mapRefs.mapScale.current) / mapRefs.mapScale.current - offsetY;
 
-                let arcX = arcXOriginal;
-                let arcY = arcYOriginal;
+                let arcX = arcXOriginal, arcY = arcYOriginal;
 
-                let cityPoint;
-                for (let cityPath of mapRefs.existingCitiesPathes.current) {
-                    if (cityPath.name === moveUnitsViewRef.current.name) {
-                        cityPoint = cityPath.point;
-                        break;
-                    }
-                }
+                let point = moveUnitsViewRef.current.point
 
-                if (cityPoint) {
-                    const cityX = (cityPoint[0] - k) / mapRefs.mapScale.current;
-                    const cityY = cityPoint[1] / mapRefs.mapScale.current - offsetY;
+                if (point) {
+                    const translatedX = (point[0] - k) / mapRefs.mapScale.current;
+                    const translatedY = point[1] / mapRefs.mapScale.current - offsetY;
 
-                    const dx = arcXOriginal - cityX;
-                    const dy = arcYOriginal - cityY;
+                    const dx = arcXOriginal - translatedX;
+                    const dy = arcYOriginal - translatedY;
                     const distance = Math.sqrt(dx * dx + dy * dy);
 
                     if (distance > moveUnitsViewRef.current.range / mapRefs.mapScale.current) {
                         const angle = Math.atan2(dy, dx);
-                        arcX = cityX + (moveUnitsViewRef.current.range / mapRefs.mapScale.current) * Math.cos(angle);
-                        arcY = cityY + (moveUnitsViewRef.current.range / mapRefs.mapScale.current) * Math.sin(angle);
+                        arcX = translatedX + (moveUnitsViewRef.current.range / mapRefs.mapScale.current) * Math.cos(angle);
+                        arcY = translatedY + (moveUnitsViewRef.current.range / mapRefs.mapScale.current) * Math.sin(angle);
                     }
                     movingUnitsCurrentPos.current = [arcX, arcY, k]
                     const adjustedX = (movingUnitsCurrentPos.current[0] * mapRefs.mapScale.current + movingUnitsCurrentPos.current[2]) % mapRefs.mapRef.current.width;
                     const adjustedY = (movingUnitsCurrentPos.current[1] + mapRefs.mapOffsetY.current) * mapRefs.mapScale.current;
+                    let radius = moveUnitsViewRef.current.name ? mapRefs.mapProperties.current.cityRadius
+                        : mapRefs.mapProperties.current.cityRadius * 0.75
 
                     for (let i = 0; i < mapRefs.existingCitiesPathes.current.length; i++) {
 
                         if (checkArcsIntersecting(mapRefs.existingCitiesPathes.current[i].point,
-                            [adjustedX, adjustedY], mapRefs.mapProperties.current.cityRadius)) {
+                            [adjustedX, adjustedY], mapRefs.mapProperties.current.cityRadius, radius)) {
                             ctx.beginPath();
                             ctx.fillStyle = brightenColor(playersStatesRef.current[userRef.current._id].color, 0.2, 0.25);
                             ctx.arc(
-                                (mapRefs.existingCitiesPathes.current[i].point[0] - k) / mapRefs.mapScale.current, 
+                                (mapRefs.existingCitiesPathes.current[i].point[0] - k) / mapRefs.mapScale.current,
                                 mapRefs.existingCitiesPathes.current[i].point[1] / mapRefs.mapScale.current - offsetY,
-                                mapRefs.mapProperties.current.cityRadius / mapRefs.mapScale.current,
+                                radius / mapRefs.mapScale.current,
                                 0, Math.PI * 2
                             )
                             ctx.fill();
                             ctx.closePath()
                         }
                     }
+                    Object.keys(playersStatesRef.current).map((userId: any) => {
+                        playersStatesRef.current[userId].units.filter((unitStack: any) => unitStack.city == null)
+                            .forEach((unitStackOutsideCity: any) => {
+                                let unitPoint = unitStackOutsideCity.point
+                                let mousePoint = [mapRefs.mousePos.current[0] - rect.left, mapRefs.mousePos.current[1] - rect.top]
+                                mousePoint = [adjustedX, adjustedY]
 
+                                if (checkArcsIntersecting(unitPoint, mousePoint,
+                                    mapRefs.mapProperties.current.cityRadius * 0.75,
+                                    mapRefs.mapProperties.current.cityRadius * 0.75)) {
+                                    ctx.beginPath();
+                                    ctx.fillStyle = brightenColor(playersStatesRef.current[userRef.current._id].color, 0.2, 0.25);
+                                    ctx.arc(
+                                        (unitPoint[0] - k) / mapRefs.mapScale.current,
+                                        unitPoint[1] / mapRefs.mapScale.current - offsetY,
+                                        mapRefs.mapProperties.current.cityRadius * 0.75 / mapRefs.mapScale.current,
+                                        0, Math.PI * 2
+                                    )
+                                    ctx.fill();
+                                    ctx.closePath()
+                                }
+
+                            })
+                    })
                     ctx.beginPath()
                     ctx.fillStyle = brightenColor(playersStatesRef.current[userRef.current._id].color, -0.05, 0.75);
                     ctx.arc(
                         arcX,
                         arcY,
-                        mapRefs.mapProperties.current.cityRadius / mapRefs.mapScale.current,
+                        mapRefs.mapProperties.current.cityRadius * 0.75 / mapRefs.mapScale.current,
                         0, Math.PI * 2
                     );
                     ctx.fill();
                     ctx.closePath();
 
                     ctx.beginPath();
-                    ctx.strokeStyle = `rgba(255, 255, 255, 0.75)`;
-                    ctx.font = `${mapRefs.mapProperties.current.cityRadius / mapRefs.mapScale.current}px Verdana`;
+                    ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
+                    ctx.font = `${mapRefs.mapProperties.current.cityRadius * 0.75 / mapRefs.mapScale.current}px Verdana`;
                     ctx.strokeText(
                         selectedUnitsRef.current,
-                        arcX - selectedUnitsRef.current.toString().length * mapRefs.mapProperties.current.cityRadius / 3 / mapRefs.mapScale.current,
-                        arcY + mapRefs.mapProperties.current.cityRadius / 3 / mapRefs.mapScale.current
+                        arcX - selectedUnitsRef.current.toString().length * mapRefs.mapProperties.current.cityRadius / 4 / mapRefs.mapScale.current,
+                        arcY + mapRefs.mapProperties.current.cityRadius / 4 / mapRefs.mapScale.current
                     );
                     ctx.stroke();
                     ctx.closePath();
@@ -683,7 +852,7 @@ export default function GamePage({ linkParam }: any) {
                     ctx.beginPath();
                     ctx.setLineDash([5, 5]);
                     ctx.moveTo(arcX, arcY);
-                    ctx.lineTo(cityX, cityY);
+                    ctx.lineTo(translatedX, translatedY);
                     ctx.strokeStyle = `rgba(255, 255, 255, 0.75)`;
                     ctx.stroke();
                     ctx.setLineDash([]);
@@ -718,28 +887,20 @@ export default function GamePage({ linkParam }: any) {
             navigate('/games/')
         }
     }
-    const loadGameUser = async (gameUser: any) => {
-        let player: any = {}
-        try {
-            player = gameUser
-            if (player.user.username == userRef.current.username && !player.spectator && gameInfoRef.current.started) {
-                isPickingCountryRef.current = true
-                setIsPickingCountry(true)
-            }
-        } catch (err: any) {
-            player = gameUser
-            if (player.user.username == userRef.current.username && !player.spectator && gameInfoRef.current.started) {
-                isPickingCountryRef.current = true
-                setIsPickingCountry(true)
-            }
+    const updateGameUser = async (gameUser: any) => {
+        let player: any = gameUser
+        if (player.user.username == userRef.current.username && !player.spectator && gameInfoRef.current.started &&
+            !gameInfoRef.current.battlePhase
+        ) {
+            isPickingCountryRef.current = true
+            setIsPickingCountry(true)
         }
-        finally {
-            if (player.user.avatar) {
-                player.image = new Image(50, 50)
-                player.image.src = player.user.avatar
-            }
-            playersStatesRef.current[player.user._id] = player
+        if (player.user.avatar && !player.image) {
+            player.image = new Image(50, 50)
+            player.image.src = player.user.avatar
         }
+        playersStatesRef.current[player.user._id] = player
+
     }
     const setAlertBehaviour = (message: any, alertClass: any) => {
         const id = new Date().getTime()
@@ -773,10 +934,20 @@ export default function GamePage({ linkParam }: any) {
         if (!linkParam) return joinAllGamesRoom()
 
         socketRef.current.on('updatePlayerStates', (data: any) => {
-            const { playerUserStates } = data
-            Object.keys(playerUserStates).forEach(key => {
-                loadGameUser(playerUserStates[key]);
-            });
+            const { playerUserState, playerUserStates, neutralCityUnitStates } = data
+            if (neutralCityUnitStates) {
+                neutralCitiesRef.current = neutralCityUnitStates
+            }
+            if (playerUserState) {
+                updateGameUser(playerUserState)
+            } else {
+                playersStatesRef.current = playerUserStates
+            }
+        })
+
+        socketRef.current.on('neutralCityUnitStatesUpdate', (data: any) => {
+            const { neutralCityUnitStates } = data
+            neutralCitiesRef.current = neutralCityUnitStates
         })
 
         socketRef.current.on('playerJoin', (data: any) => {
@@ -784,7 +955,7 @@ export default function GamePage({ linkParam }: any) {
                 show: false
             })
             const { userJoined } = data
-            loadGameUser(userJoined)
+            updateGameUser(userJoined)
         })
         socketRef.current.on('playerLeave', (data: any) => {
 
@@ -815,7 +986,6 @@ export default function GamePage({ linkParam }: any) {
 
         socketRef.current.on('countryPicked', (data: any) => {
             const { id, countryName, acquiredCities, acquiredCountries, color, units } = data
-            console.log(playersStatesRef.current[id])
             let mUser = playersStatesRef.current[id]
             mUser.color = color
             mUser.starterCountry = countryName
@@ -1076,7 +1246,8 @@ export default function GamePage({ linkParam }: any) {
                             <Modal.Body style={mapRefs.modalProperties.current}>
                                 <Button variant={'success'}
                                     onClick={handleUnitSelectMove}
-                                    onTouchEnd={handleUnitSelectMove}>
+                                    onTouchEnd={handleUnitSelectMove}
+                                    disabled={selectedUnitsRef.current == 0}>
                                     {`Move units`}
                                 </Button>
                             </Modal.Body></>

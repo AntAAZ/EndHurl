@@ -1,16 +1,16 @@
-
 import { Router, Request, Response, NextFunction } from 'express';
 import Game from '../../models/Game';
 import Map from '../../models/Map';
 import User from '../../models/User';
+import City from '../../models/City';
+import Unit from '../../models/Unit';
 import { v4 as uuidv4 } from 'uuid';
 
 class AddGameByPropsRoute {
 
     private router: Router = Router();
 
-    constructor() 
-    {    
+    constructor() {    
         this.router.post('/addGameByProps', this.handlePostReq);
     }
 
@@ -30,7 +30,7 @@ class AddGameByPropsRoute {
                 res.status(404).send({ message: 'Max players count of game not set' });
                 return;
             }
-            if(!mapName) {
+            if (!mapName) {
                 res.status(404).send({ message: 'Map name is not set' });
                 return;
             }
@@ -38,24 +38,37 @@ class AddGameByPropsRoute {
             const creator = await User.findOne({ creatorName }).lean();
 
             if (!creator) {
-                res.status(404).send({ message: 'User doesnt exist' });
+                res.status(404).send({ message: 'User doesn\'t exist' });
                 return;
             }
-            if(req.user.username != creator.username)
-            {
+            if (req.user.username != creator.username) {
                 res.status(403).send({ message: 'Error with game creation (Forbidden)' });
                 return;
             }
             if (!map) {
-                res.status(404).send({ message: 'Map doesnt exist' });
+                res.status(404).send({ message: 'Map doesn\'t exist' });
                 return;
             }
 
-            const randomLink = uuidv4()
+            const randomLink = uuidv4();
 
-            await new Game({
+            const game = new Game({
                 name, link: randomLink, maxPlayersCount, map, creator
-            }).save()
+            });
+            await game.save();
+
+            const cities = await City.find({ mapName: map.name }).lean();
+
+            const units = cities.map(city => ({
+                city: city._id,
+                game: game._id,
+                userGame: null,
+                numberOfUnits: Math.min(Math.ceil(city.pop_max / 1000000), 10),
+                point: null,
+                range: 0
+            }));
+
+            await Unit.insertMany(units);
 
             return res.send({ link: randomLink });
             
@@ -65,9 +78,8 @@ class AddGameByPropsRoute {
         }
     }
 
-    public getRouter() : Router {
+    public getRouter(): Router {
         return this.router;
     }
 }
-
 export default new AddGameByPropsRoute().getRouter();

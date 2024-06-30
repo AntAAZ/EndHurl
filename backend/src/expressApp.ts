@@ -40,6 +40,7 @@ import GetGameByLinkRoute from './routes/games/GetGameByLinkRoute'
 import GetUserGameDataRoute from './routes/games/GetUserGameDataRoute'
 import EditGameByPropsRoute from './routes/games/EditGameByPropsRoute'
 
+import ws from 'ws';
 class expressApp {
     private io: any
     private server: any
@@ -78,6 +79,7 @@ class expressApp {
         new PassportAuth();
         this.server = http.createServer(this.getExpress())
         this.io = new Server(this.server, {
+            wsEngine: ws.Server,
             cors: {
                 origin: `http://${process.env.SERVER_NAME}:${process.env.APP_PORT}`,
                 methods: ["GET", "POST"],
