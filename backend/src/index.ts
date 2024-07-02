@@ -86,32 +86,31 @@ const updatePlayerGameStates = async (userGamesParam: any) => {
         .populate({ path: 'starterCountry', select: '-_id -__v' })
         .lean();
 
-    const unitPromises = [];
+    const userGameIds = userGames.map(userGame => userGame._id);
+    const units = await Unit.find({ userGame: { $in: userGameIds } })
+        .populate({ path: 'city', select: '-__v' })
+        .populate({ path: 'game', select: '-_id -__v' })
+        .populate({
+            path: 'userGame',
+            populate: {
+                path: 'user',
+                select: '-password -__v'
+            }
+        })
+        .lean();
 
-    for (const userGame of userGames) {
-        unitPromises.push(
-            Unit.find({ userGame })
-                .populate({ path: 'city', select: '-__v' })
-                .populate({ path: 'game', select: '-_id -__v' })
-                .populate({
-                    path: 'userGame',
-                    populate: {
-                        path: 'user',
-                        select: '-password -__v'
-                    }
-                })
-                .lean()
-        );
-    }
+    const unitsByUserGame = units.reduce((acc, unit) => {
+        if (!acc[unit.userGame._id]) {
+            acc[unit.userGame._id] = [];
+        }
+        acc[unit.userGame._id].push(unit);
+        return acc;
+    }, {});
 
-    const unitsArrays = await Promise.all(unitPromises);
-
-    userGames.forEach((userGame, index) => {
-        const { color, acquiredCities, acquiredCountries, starterCountry } = userGame;
-        const units = unitsArrays[index] || []
-
-        const userId = userGame.user._id;
-        const gameLink = userGame.game.link;
+    userGames.forEach(userGame => {
+        const { color, acquiredCities, acquiredCountries, starterCountry, user, game } = userGame;
+        const userId = user._id;
+        const gameLink = game.link;
 
         playerStates[gameLink][userId] = {
             ...playerStates[gameLink][userId],
@@ -119,11 +118,12 @@ const updatePlayerGameStates = async (userGamesParam: any) => {
             acquiredCities,
             acquiredCountries,
             starterCountry,
-            units
-        }
+            units: unitsByUserGame[userGame._id] || []
+        };
     });
 
 };
+
 const initNeutralCitiesState = async (link: any, countryName?: any) => {
     const game = await Game.findOne({ link }).select('_id').lean();
     if (!game) return
@@ -170,6 +170,18 @@ const calculateDistance = (point1: any, point2: any) => {
     const [x2, y2] = point2;
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 };
+
+let subscribedGamesForUnits: any = {}
+
+const initSubscribedGamesForUnits = async () => {
+    const game = await Game.find().select('_id').lean();
+    if (!game) return
+    game.forEach((gameObj: any) => {
+        if (gameObj.battlePhase) {
+            subscribedGamesForUnits[gameObj.link] = true
+        }
+    })
+}
 mongoose.connect(
     //`mongodb+srv://${env.DB_USER}:${env.DB_PASS}@cluster0.yymov.mongodb.net/${env.DB_NAME}?retryWrites=true&w=majority`,
     `mongodb://127.0.0.1:27017/${env.DB_NAME}?retryWrites=true&w=majority`,
@@ -185,6 +197,8 @@ mongoose.connection.once('open', async () => {
     console.log("connection to MongoDB has been established");
     await initAllPlayerGameStates()
     console.log("all player game states have been loaded");
+    await initSubscribedGamesForUnits()
+    console.log("all games in battle phase have been subbed for units");
 
     io.on('connection', async (socket: any) => {
         const session = socket.handshake.session;
@@ -206,17 +220,15 @@ mongoose.connection.once('open', async () => {
             if (!neutralCitiesUnitState) {
                 await initNeutralCitiesState(link)
             }
-            // Check if the user is already in the playerStates
+
             let userState = playerStates[link][userId];
 
             if (userState) {
-                // If user is already in playerStates, handle accordingly
+
                 if (userState.spectator && !manualJoin) {
-                    // User is a spectator and not allowed to join unless manual join is true
                     return socket.emit('infoMessage', `You are a spectator! Press SPACE to join if game not full`);
                 } else {
-                    // User is already part of the game room, update state and emit events
-                    userState.spectator = false; // Ensure user is not marked as a spectator
+                    userState.spectator = false;
                     socket.join(link);
                     socket.emit('updatePlayerStates', {
                         playerUserStates: playerStates[link],
@@ -233,15 +245,14 @@ mongoose.connection.once('open', async () => {
                 }
             }
             const randomColor = selectRandomColor()
-            // If user is not in playerStates, handle joining logic
+
             if (Object.keys(playerStates[link]).length >= game.maxPlayersCount) {
                 // Game is full
                 if (!game.started) {
-                    // Game not started, user becomes spectator
                     playerStates[link][userId] = {
                         user,
                         spectator: true,
-                        color: randomColor // Assign a random color to spectator
+                        color: randomColor
                     };
                     socket.join(link);
                     socket.emit('updatePlayerStates', {
@@ -250,11 +261,9 @@ mongoose.connection.once('open', async () => {
                     });
                     socket.emit('infoMessage', `You are now a spectator! Press SPACE to join if game not full`);
                 } else {
-                    // Game started, cannot join
                     socket.emit('errorMessage', `You cannot join because the game is full and has started`);
                 }
             } else {
-                // Game is not full, user can join as a player
                 playerStates[link][userId] = {
                     user,
                     spectator: false,
@@ -358,29 +367,30 @@ mongoose.connection.once('open', async () => {
         })
 
         socket.on('playerPickingCountry', async (data: any) => {
-
             const { link, name } = data;
-            if (!link || !playerStates[link]) return
-            if (!playerStates[link][userId]) return
-            if (playerStates[link][userId].spectator) return
+            if (!link || !playerStates[link]) return;
+            if (!playerStates[link][userId]) return;
+            if (playerStates[link][userId].spectator) return;
 
-            let gameObject = await Game.findOne({ link })
+            const gameObjectPromise = Game.findOne({ link })
                 .populate('creator').populate('map').lean();
-            if (!gameObject || !gameObject.started) return
 
-            let country = await Country.findOne({ name, mapName: gameObject.map.name }).lean()
-            if (!country) return
+            const [gameObject] = await Promise.all([gameObjectPromise]);
+            if (!gameObject || !gameObject.started) return;
 
-            let userGameObject = await UserGame.findOne({ user, game: gameObject }).lean()
+            const countryPromise = Country.findOne({ name, mapName: gameObject.map.name }).lean();
+            const userGameObjectPromise = UserGame.findOne({ user, game: gameObject }).lean();
+            const [country, userGameObject] = await Promise.all([countryPromise, userGameObjectPromise]);
+            if (!country) return;
             if (userGameObject) {
-                socket.emit('errorMessage', `You already have a confirmed selected country`)
-                return
+                socket.emit('errorMessage', `You already have a confirmed selected country`);
+                return;
             }
 
-            let cities = await City.find({ countryName: country.name, mapName: gameObject.map.name }).lean()
-            if (!cities) return
+            const cities = await City.find({ countryName: country.name, mapName: gameObject.map.name }).lean();
+            if (!cities) return;
 
-            userGameObject = new UserGame({
+            const newUserGameObject = new UserGame({
                 user,
                 game: gameObject,
                 color: playerStates[link][userId].color,
@@ -388,51 +398,53 @@ mongoose.connection.once('open', async () => {
                 acquiredCountries: [country],
                 starterCountry: country,
                 units: []
-            })
+            });
 
-            const savedGameObject = await userGameObject.save()
+            const savedGameObjectPromise = newUserGameObject.save();
 
-            playerStates[link][userId].units = []
-            playerStates[link][userId].game = savedGameObject
-            playerStates[link][userId].acquiredCities = cities
-            playerStates[link][userId].acquiredCountries = [country]
-            playerStates[link][userId].starterCountry = country
+            playerStates[link][userId].units = [];
+            playerStates[link][userId].game = newUserGameObject;
+            playerStates[link][userId].acquiredCities = cities;
+            playerStates[link][userId].acquiredCountries = [country];
+            playerStates[link][userId].starterCountry = country;
 
-            for (const city of cities) {
+            const unitUpdates = cities.map(city => {
                 const unitsUserGame = {
-                    userGame: savedGameObject,
+                    userGame: newUserGameObject,
                     range: 400
-                }
+                };
+                return Unit.findOneAndUpdate({ city, game: gameObject._id }, unitsUserGame)
+                    .lean().exec().then(updatedUnit => {
+                        playerStates[link][userId].units.push({
+                            city,
+                            userGame: newUserGameObject,
+                            numberOfUnits: updatedUnit.numberOfUnits,
+                            range: 400
+                        });
+                    });
+            });
 
-                const updatedUnit = await Unit.findOneAndUpdate({ city, game: gameObject._id }, unitsUserGame)
+            await Promise.all([savedGameObjectPromise, ...unitUpdates]);
 
-                playerStates[link][userId].units.push({
-                    city,
-                    userGame: savedGameObject,
-                    numberOfUnits: updatedUnit.numberOfUnits,
-                    range: 400
-                })
-            }
-
-            removeCitiesNeutralityInCountry(link, country.name)
+            removeCitiesNeutralityInCountry(link, country.name);
 
             io.to(link).emit('neutralCityUnitStatesUpdate', {
                 neutralCityUnitStates: neutralCitiesUnitState[link]
-            })
+            });
             io.to(link).emit('countryPicked', {
                 id: userId,
-                color: userGameObject.color,
+                color: newUserGameObject.color,
                 starterCountry: country.name,
                 acquiredCities: playerStates[link][userId].acquiredCities,
                 acquiredCountries: playerStates[link][userId].acquiredCountries,
                 units: playerStates[link][userId].units
-            })
-            io.to(link).emit('infoMessage', `${user.username} has chosen ${country.name}`)
+            });
+            io.to(link).emit('infoMessage', `${user.username} has chosen ${country.name}`);
 
             if (!gameObject.battlePhase && checkAllPlayersPickedCountry(gameObject)) {
-                io.to(link).emit('allPlayersPickedCountry', { creatorName: gameObject.creator.username })
+                io.to(link).emit('allPlayersPickedCountry', { creatorName: gameObject.creator.username });
             }
-        })
+        });
 
         socket.on('beginBattlePhase', async (data: any) => {
             const { link } = data
@@ -445,6 +457,7 @@ mongoose.connection.once('open', async () => {
             game.battlePhase = true
             await game.save()
 
+            subscribedGamesForUnits[link] = true
             io.to(link).emit('startBattlePhase')
 
         })
@@ -455,7 +468,6 @@ mongoose.connection.once('open', async () => {
 
             if (!link || !playerStates[link]) return;
 
-            // Validation checks
             if ((!sourcePoint && !sourceCityName) || (!destinationPoint && !destinationCityName)) return;
             if ((sourcePoint && sourceCityName) || (destinationPoint && destinationCityName)) return;
 
@@ -466,70 +478,38 @@ mongoose.connection.once('open', async () => {
                 .populate('creator').populate('map').lean();
             if (!game) return;
 
-            // Determine source and destination
-            let sourceUnits: any, destinationUnits: any;
+            const unitQuery = { game: game._id };
+
+            const sourceUnitsPromise = sourceCityName
+                ? Unit.find(unitQuery).populate({
+                    path: 'userGame',
+                    populate: { path: 'user', select: '-password -__v' }
+                }).populate({ path: 'city', match: { name: sourceCityName } })
+                : Unit.findOne({ ...unitQuery, point: sourcePoint }).populate({
+                    path: 'userGame',
+                    populate: { path: 'user', select: '-password -__v' }
+                }).populate({ path: 'city', match: { point: sourcePoint } });
+
+            const destinationUnitsPromise = destinationCityName
+                ? Unit.find(unitQuery).populate({
+                    path: 'userGame',
+                    populate: { path: 'user', select: '-password -__v' }
+                }).populate({ path: 'city', match: { name: destinationCityName } })
+                : Unit.findOne({ ...unitQuery, point: destinationPoint }).populate({
+                    path: 'userGame',
+                    populate: { path: 'user', select: '-password -__v' }
+                }).populate({ path: 'city', match: { point: destinationPoint } });
+
+            let [sourceUnits, destinationUnits] = await Promise.all([sourceUnitsPromise, destinationUnitsPromise]);
+
             if (sourceCityName) {
-                const units = await Unit.find({ game: game._id })
-                    .populate({
-                        path: 'userGame',
-                        populate: {
-                            path: 'user',
-                            select: '-password -__v'
-                        }
-                    })
-                    .populate({
-                        path: 'city',
-                        match: { name: sourceCityName }
-                    })
-
-                sourceUnits = units.filter(unit => unit.city !== null && unit.city.name === sourceCityName)[0];
-                if (!sourceUnits || sourceUnits.numberOfUnits < numberOfUnitsInt) return;
-            } else {
-                sourceUnits = await Unit.findOne({ point: sourcePoint, game: game._id })
-                    .populate({
-                        path: 'userGame',
-                        populate: {
-                            path: 'user',
-                            select: '-password -__v'
-                        }
-                    })
-                    .populate({
-                        path: 'city',
-                        match: { point: sourcePoint }
-                    });
-                if (!sourceUnits || sourceUnits.numberOfUnits < numberOfUnitsInt) return;
+                sourceUnits = sourceUnits.filter((unit: any) => unit.city !== null && unit.city.name === sourceCityName)[0];
             }
-
             if (destinationCityName) {
-
-                const units = await Unit.find({ game: game._id })
-                    .populate({
-                        path: 'userGame',
-                        populate: {
-                            path: 'user',
-                            select: '-password -__v' // Exclude fields here
-                        }
-                    })
-                    .populate({
-                        path: 'city',
-                        match: { name: destinationCityName }
-                    });
-
-                destinationUnits = units.filter(unit => unit.city !== null && unit.city.name === destinationCityName)[0];
-            } else {
-                destinationUnits = await Unit.findOne({ point: destinationPoint, game: game._id })
-                    .populate({
-                        path: 'userGame',
-                        populate: {
-                            path: 'user',
-                            select: '-password -__v'
-                        }
-                    })
-                    .populate({
-                        path: 'city',
-                        match: { point: destinationPoint }
-                    });
+                destinationUnits = destinationUnits.filter((unit: any) => unit.city !== null && unit.city.name === destinationCityName)[0];
             }
+
+            if (!sourceUnits || sourceUnits.numberOfUnits < numberOfUnitsInt) return;
 
             const sourcePosition = sourceCityName ? sourceUnits.city.point : sourceUnits.point;
             const destinationPosition = destinationCityName ? destinationUnits.city.point : destinationPoint;
@@ -550,37 +530,66 @@ mongoose.connection.once('open', async () => {
                                 sourceUnits.numberOfUnits = 0;
                             }
 
-                            await sourceUnits.save();
-                            await destinationUnits.save();
+                            const savePromises = [
+                                sourceUnits.save(),
+                                destinationUnits.save()
+                            ];
+
+                            await Promise.all(savePromises);
                         }
                         else {
                             if (!destinationUnits.city && sourceUnits.point === destinationUnits.point) return
 
                             destinationUnits.numberOfUnits += numberOfUnitsInt;
                             sourceUnits.numberOfUnits -= numberOfUnitsInt;
+                            const saveOrDeletePromises = [];
+
                             if (sourceUnits.numberOfUnits <= 0) {
-                                await Unit.deleteOne({ _id: sourceUnits._id });
+                                saveOrDeletePromises.push(Unit.deleteOne({ _id: sourceUnits._id }));
                             } else {
-                                await sourceUnits.save();
+                                saveOrDeletePromises.push(sourceUnits.save());
                             }
-                            await destinationUnits.save();
+
+                            saveOrDeletePromises.push(destinationUnits.save());
+
+                            await Promise.all(saveOrDeletePromises);
                         }
                         await updatePlayerGameStates([sourceUnits.userGame._id])
-                    } else { 
+                    } else {
 
                         if (destinationUnits.numberOfUnits < numberOfUnitsInt) {
+                            const promises = [
+                                UserGame.findById(sourceUnits.userGame._id).populate('acquiredCities'),
+                                UserGame.findById(destinationUnits.userGame._id).populate('acquiredCities'),
+                            ];
 
-                            const attackerUserGame = await UserGame.findById(sourceUnits.userGame._id);
-                            const defenderUserGame = await UserGame.findById(destinationUnits.userGame._id);
+                            if (destinationUnits.city) {
+                                promises.push(Country.findOne({ name: destinationUnits.city.countryName }).lean());
+                            }
 
-                            defenderUserGame.acquiredCities = defenderUserGame.acquiredCities.filter(
-                                (city: any) => !city.equals(destinationUnits.city._id)
-                            );
+                            const [attackerUserGame, defenderUserGame, country] = await Promise.all(promises);
 
-                            attackerUserGame.acquiredCities.push(destinationUnits.city._id);
+                            if (!attackerUserGame || !defenderUserGame) return
+                            let saveSourceUnitsPromise;
+                            let hasAttackerAcquiredCountryAlready = false;
 
-                            await defenderUserGame.save();
-                            await attackerUserGame.save();
+                            if (destinationUnits.city && country) {
+                                defenderUserGame.acquiredCities = defenderUserGame.acquiredCities.filter(
+                                    (city: any) => !city._id.equals(destinationUnits.city._id)
+                                );
+
+                                attackerUserGame.acquiredCities.push(destinationUnits.city);
+
+                                // Check if attacker has already acquired this country
+                                hasAttackerAcquiredCountryAlready = attackerUserGame.acquiredCountries.some(
+                                    (cId: any) => cId.equals(country._id)
+                                );
+                            }
+
+                            const saveUserGamesPromise = Promise.all([
+                                defenderUserGame.save(),
+                                attackerUserGame.save()
+                            ]);
 
                             const originalSourceUserGameId = sourceUnits.userGame._id;
                             const originalDestinationUserGameId = destinationUnits.userGame._id;
@@ -589,23 +598,70 @@ mongoose.connection.once('open', async () => {
                             sourceUnits.numberOfUnits -= numberOfUnitsInt;
 
                             if (sourceUnits.numberOfUnits > 0) {
-                                await sourceUnits.save();
+                                saveSourceUnitsPromise = sourceUnits.save();
                             } else {
                                 if (sourceUnits.city) {
-                                    await sourceUnits.save();
+                                    saveSourceUnitsPromise = sourceUnits.save();
                                 } else {
-                                    await Unit.deleteOne({ _id: sourceUnits._id });
+                                    saveSourceUnitsPromise = Unit.deleteOne({ _id: sourceUnits._id });
                                 }
                             }
 
                             destinationUnits.userGame = attackerUserGame._id;
-                            destinationUnits.city = destinationUnits.city;
-                            destinationUnits.point = destinationUnits.point;
                             destinationUnits.range = 400;
 
-                            await destinationUnits.save();
+                            const saveDestinationUnitsPromise = destinationUnits.save();
 
-                            const uniqueUserGameIds = Array.from(new Set([originalSourceUserGameId, originalDestinationUserGameId]));
+                            await Promise.all([
+                                saveUserGamesPromise,
+                                saveSourceUnitsPromise,
+                                saveDestinationUnitsPromise
+                            ]);
+
+                            const uniqueUserGameIds = Array.from(new Set(
+                                [originalSourceUserGameId, originalDestinationUserGameId]
+                            ));
+
+                            if (country && !hasAttackerAcquiredCountryAlready) {
+                                let attackerHasCapturedCapAlready = false;
+                                const attackerAcquiredCities = attackerUserGame.acquiredCities.filter(
+                                    (city: any) => {
+                                        if (city.countryName === country.name && city.type) {
+                                            attackerHasCapturedCapAlready = true;
+                                        }
+                                        return city.countryName === country.name;
+                                    }
+                                );
+
+                                const attackerAcquiredCityIds = attackerUserGame.acquiredCities.map(
+                                    (city: any) => city._id.toString());
+
+                                const notAttackerCities = await City.find({
+                                    countryName: country.name,
+                                    mapName: game.map.name,
+                                    _id: { $nin: [...attackerAcquiredCityIds] }
+                                });
+
+                                const attackerPopulation = attackerAcquiredCities.reduce(
+                                    (total: any, city: any) => total + city.pop_max, 0
+                                );
+                                const defenderPopulation = notAttackerCities.reduce(
+                                    (total: any, city: any) => total + city.pop_max, 0
+                                );
+
+                                if (attackerPopulation > defenderPopulation && attackerHasCapturedCapAlready) {
+                                    attackerUserGame.acquiredCountries.push(country._id);
+                                    defenderUserGame.acquiredCountries = defenderUserGame.acquiredCountries.filter(
+                                        (cId: any) => !cId.equals(country._id)
+                                    );
+
+                                    await Promise.all([
+                                        attackerUserGame.save(),
+                                        defenderUserGame.save()
+                                    ]);
+                                }
+                            }
+
                             await updatePlayerGameStates(uniqueUserGameIds);
 
                         } else {
@@ -613,83 +669,147 @@ mongoose.connection.once('open', async () => {
                             destinationUnits.numberOfUnits -= numberOfUnitsInt;
                             sourceUnits.numberOfUnits -= numberOfUnitsInt;
 
+
+                            const saveOrDeletePromises = [];
+
                             if (destinationUnits.numberOfUnits <= 0) {
-                                destinationUnits.numberOfUnits = 0
+                                destinationUnits.numberOfUnits = 0;
                                 if (!destinationUnits.city) {
-                                    await Unit.deleteOne({ _id: destinationUnits._id })
+                                    saveOrDeletePromises.push(Unit.deleteOne({ _id: destinationUnits._id }));
                                 } else {
-                                    await destinationUnits.save();
+                                    saveOrDeletePromises.push(destinationUnits.save());
                                 }
                             } else {
-                                await destinationUnits.save();
+                                saveOrDeletePromises.push(destinationUnits.save());
                             }
 
                             if (sourceUnits.numberOfUnits <= 0) {
-                                sourceUnits.numberOfUnits = 0
+                                sourceUnits.numberOfUnits = 0;
                                 if (!sourceUnits.city) {
-                                    await Unit.deleteOne({ _id: sourceUnits._id })
+                                    saveOrDeletePromises.push(Unit.deleteOne({ _id: sourceUnits._id }));
                                 } else {
-                                    await sourceUnits.save();
+                                    saveOrDeletePromises.push(sourceUnits.save());
                                 }
                             } else {
-                                await sourceUnits.save();
+                                saveOrDeletePromises.push(sourceUnits.save());
                             }
+
+                            await Promise.all(saveOrDeletePromises);
                             await updatePlayerGameStates([sourceUnits.userGame._id, destinationUnits.userGame._id])
                         }
                     }
                 } else {
                     // Neutral city
                     if (numberOfUnitsInt > destinationUnits.numberOfUnits) {
-                        const attackerUserGame = await UserGame.findById(sourceUnits.userGame._id);
+                        const attackerUserGamePromise = UserGame.findById(sourceUnits.userGame._id).populate('acquiredCities');
 
-                        attackerUserGame.acquiredCities.push(destinationUnits.city._id);
-                        await attackerUserGame.save();
                         destinationUnits.numberOfUnits = numberOfUnitsInt - destinationUnits.numberOfUnits;
                         sourceUnits.numberOfUnits -= numberOfUnitsInt;
 
+                        let saveSourceUnitsPromise;
                         if (sourceUnits.numberOfUnits > 0) {
-                            await sourceUnits.save();
+                            saveSourceUnitsPromise = sourceUnits.save();
                         } else {
                             if (sourceUnits.city) {
-                                await sourceUnits.save();
+                                saveSourceUnitsPromise = sourceUnits.save();
                             } else {
-                                await Unit.deleteOne({ _id: sourceUnits._id });
+                                saveSourceUnitsPromise = Unit.deleteOne({ _id: sourceUnits._id });
                             }
                         }
 
+                        const attackerUserGame = await attackerUserGamePromise;
+                        attackerUserGame.acquiredCities.push(destinationUnits.city);
+
+                        const saveAttackerUserGamePromise = attackerUserGame.save();
+
                         destinationUnits.userGame = attackerUserGame._id;
-                        destinationUnits.city = destinationUnits.city;
-                        destinationUnits.point = destinationUnits.point;
-                        destinationUnits.range = 400
+                        destinationUnits.range = 400;
 
-                        await destinationUnits.save();
+                        const saveDestinationUnitsPromise = destinationUnits.save();
 
-                        delete (neutralCitiesUnitState[link][destinationUnits.city.name])
+                        await Promise.all([
+                            saveAttackerUserGamePromise,
+                            saveSourceUnitsPromise,
+                            saveDestinationUnitsPromise
+                        ]);
+
+                        const country = await Country.findOne({ name: destinationUnits.city.countryName }).lean();
+
+                        const hasAttackerCapturedCountry = attackerUserGame.acquiredCountries.some(
+                            (cId: any) => cId.equals(country._id)
+                        );
+
+                        if (country && !hasAttackerCapturedCountry) {
+                            let attackerHasCapturedCapAlready = false
+
+                            const attackerAcquiredCities = attackerUserGame.acquiredCities.filter(
+                                (city: any) => {
+
+                                    if (city.countryName === country.name && city.type) {
+                                        attackerHasCapturedCapAlready = true;
+                                    }
+                                    return city.countryName === country.name
+                                }
+                            );
+
+                            const attackerPopulation = attackerAcquiredCities.reduce(
+                                (total: any, city: any) => total + city.pop_max, 0
+                            );
+
+                            const attackerAcquiredCityIds = attackerUserGame.acquiredCities.map(
+                                (city: any) => city._id.toString());
+
+                            const notAttackerCities = await City.find({
+                                countryName: country.name,
+                                mapName: game.map.name,
+                                _id: { $nin: [...attackerAcquiredCityIds] }
+                            });
+
+                            const defenderPopulation = notAttackerCities.reduce(
+                                (total: any, city: any) => total + city.pop_max, 0
+                            );
+
+                            if (attackerPopulation > defenderPopulation && attackerHasCapturedCapAlready) {
+                                attackerUserGame.acquiredCountries.push(country._id);
+                                await Promise.all([
+                                    attackerUserGame.save()
+                                ]);
+                            }
+                        }
+                        delete neutralCitiesUnitState[link][destinationUnits.city.name];
+                        await updatePlayerGameStates([attackerUserGame._id])
+
                     } else {
                         destinationUnits.numberOfUnits -= numberOfUnitsInt;
                         sourceUnits.numberOfUnits -= numberOfUnitsInt;
 
+                        const saveOrDeletePromises = [];
+
                         if (sourceUnits.numberOfUnits <= 0) {
-                            sourceUnits.numberOfUnits = 0
+                            sourceUnits.numberOfUnits = 0;
                             if (!sourceUnits.city) {
-                                await Unit.deleteOne({ _id: sourceUnits._id })
+                                saveOrDeletePromises.push(Unit.deleteOne({ _id: sourceUnits._id }));
                             } else {
-                                await sourceUnits.save();
+                                saveOrDeletePromises.push(sourceUnits.save());
                             }
+                        } else {
+                            saveOrDeletePromises.push(sourceUnits.save());
                         }
 
                         if (destinationUnits.numberOfUnits <= 0) {
-                            destinationUnits.numberOfUnits = 0
+                            destinationUnits.numberOfUnits = 0;
                             if (!destinationUnits.city) {
-                                await Unit.deleteOne({ _id: destinationUnits._id })
+                                saveOrDeletePromises.push(Unit.deleteOne({ _id: destinationUnits._id }));
                             } else {
-                                await destinationUnits.save();
+                                saveOrDeletePromises.push(destinationUnits.save());
                             }
                         } else {
-                            await destinationUnits.save();
+                            saveOrDeletePromises.push(destinationUnits.save());
                         }
+
+                        await Promise.all(saveOrDeletePromises);
+                        await updatePlayerGameStates([sourceUnits.userGame._id])
                     }
-                    await updatePlayerGameStates([sourceUnits.userGame._id])
                 }
             } else {
                 // No units at destination, just move the units
@@ -702,18 +822,26 @@ mongoose.connection.once('open', async () => {
                     range: sourceUnits.range
                 });
 
-                await newUnit.save();
+                const saveNewUnitPromise = newUnit.save();
+
                 sourceUnits.numberOfUnits -= numberOfUnitsInt;
+
+                let saveSourceUnitsPromise;
                 if (sourceUnits.numberOfUnits <= 0) {
-                    sourceUnits.numberOfUnits = 0
+                    sourceUnits.numberOfUnits = 0;
                     if (!sourceUnits.city) {
-                        await Unit.deleteOne({ _id: sourceUnits._id })
+                        saveSourceUnitsPromise = Unit.deleteOne({ _id: sourceUnits._id });
                     } else {
-                        await sourceUnits.save();
+                        saveSourceUnitsPromise = sourceUnits.save();
                     }
                 } else {
-                    await sourceUnits.save();
+                    saveSourceUnitsPromise = sourceUnits.save();
                 }
+
+                await Promise.all([
+                    saveNewUnitPromise,
+                    saveSourceUnitsPromise
+                ]);
                 await updatePlayerGameStates([sourceUnits.userGame._id])
             }
 

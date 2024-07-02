@@ -528,7 +528,11 @@ export default function GamePage({ linkParam }: any) {
     }
 
     const updateGameMap = () => {
-        if (!isMountedRef.current) return
+        if (!isMountedRef.current)
+        if(!userRef.current) {
+            requestAnimationFrame(updateGameMap)
+            return
+        }
         let newPos = movedMousePosition.current
         let mapWidth: any = mapRefs.mapRef.current.width
         let ctx: any = mapRefs.gameCanvasRef.current.getContext('2d')
@@ -577,7 +581,6 @@ export default function GamePage({ linkParam }: any) {
         requestAnimationFrame(updateGameMap)
     }
     const brightenColor = (rgba: any, factor = 0.1, alpha?: any) => {
-        // Extract the RGBA components from the input string
         const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*(\d*\.?\d+)?\)/);
         if (!match) {
             throw new Error("Invalid RGBA string");
@@ -585,18 +588,14 @@ export default function GamePage({ linkParam }: any) {
 
         let [r, g, b, a] = match.slice(1).map((num: any, index: any) => (index < 3 ? parseInt(num) : parseFloat(num)));
 
-        // Set default alpha to 1 if not provided
         a = a !== undefined ? a : 1;
 
-        // Function to brighten a single color component
         const brighten = (color: any) => Math.min(Math.floor(color + (255 - color) * factor), 255);
 
-        // Brighten each of the RGB components
         r = brighten(r);
         g = brighten(g);
         b = brighten(b);
 
-        // Return the new brighter RGBA color string
         if (alpha) a = alpha
         return `rgba(${r}, ${g}, ${b}, ${a})`;
     }
